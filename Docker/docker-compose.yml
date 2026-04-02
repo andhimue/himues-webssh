@@ -1,0 +1,39 @@
+services:
+  webssh:
+    image: webssh:latest          # oder: build: .
+    container_name: webssh
+    restart: unless-stopped
+
+    ports:
+      - "127.0.0.1:8282:8282"    # Nur lokal binden — Nginx übernimmt den externen Zugang
+
+    volumes:
+      # App-Verzeichnis: die gesamte WebSSH-Installation liegt auf dem Host
+      # Änderungen an config, fonts, keys sind sofort wirksam (kein Rebuild nötig)
+      - /opt/webssh:/app
+
+    environment:
+      - TZ=Europe/Berlin           # Zeitzone für Log-Zeitstempel
+
+    # Ressourcen-Limits (optional, empfohlen für Produktivbetrieb)
+    # deploy:
+    #   resources:
+    #     limits:
+    #       cpus: "1.0"
+    #       memory: 512M
+
+    # Healthcheck: prüft ob der Server antwortet
+    healthcheck:
+      test: ["CMD", "python", "-c",
+             "import urllib.request; urllib.request.urlopen('http://localhost:8282/').read()"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+    # Logging: Standard-Docker-Logging, rotierend
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "10m"
+        max-file: "3"

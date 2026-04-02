@@ -1,0 +1,1979 @@
+/*
+ * WebSSH — Stylesheet
+ * Datei: static/webssh.css
+ *
+ * Struktur:
+ *   1. CSS-Variablen (Design-Tokens)
+ *   2. Reset & Basis
+ *   3. App-Layout (Grid)
+ *   4. Header & Tabs
+ *   5. Terminal-Bereich
+ *   6. Welcome-Screen
+ *   7. Keyboard-Toolbar
+ *   8. Launcher-Overlay
+ *   9. Aktive Sessions (im Launcher)
+ *  10. Server-Kategorien & Karten (im Launcher)
+ *  11. Takeover-Banner
+ */
+
+
+/* ════════════════════════════════════════════════════════════
+   1. CSS-VARIABLEN (Design-Tokens)
+   Zentrale Farbpalette und Größen — alle UI-Komponenten
+   referenzieren ausschließlich diese Variablen, keine
+   Hartwert-Farben im Rest des Stylesheets.
+   ════════════════════════════════════════════════════════════ */
+:root {
+    /* Hintergrundfarben — abgestuft von dunkel nach etwas heller */
+    --bg:           #0d0d0d;   /* Seitenhintergrund / Terminal */
+    --bg-panel:     #141414;   /* Header, Sidebar, Panels */
+    --bg-hover:     #1e1e1e;   /* Hover-Zustand von interaktiven Elementen */
+    --bg-active:    #2a2000;   /* Aktiv / ausgewählt / Session-Karten */
+
+    /* Rahmen */
+    --border:       #2a2a2a;   /* Standardrahmen für Panels und Buttons */
+
+    /* Textfarben */
+    --text:         #d4d4d4;   /* Standardtext */
+    --text-muted:   #6a6a6a;   /* Sekundärtext, Labels, Platzhalter */
+    --text-bright:  #f5f5f5;   /* Überschriften, aktive Elemente */
+
+    /* Akzentfarben */
+    --accent:       #f0b429;   /* Primäre Interaktionsfarbe (Gelb/Amber) */
+    --accent-dim:   #3a2c00;   /* Gedämpfter Akzent für Hintergründe */
+    --danger:       #f85149;   /* Fehler, Schließen-Buttons */
+    --success:      #4caf50;   /* Verbunden-Status */
+    --warn:         #f0b429;   /* Warnung — gleiche Farbe wie Akzent */
+
+    /* Schriftarten */
+    --font-mono:    'DejaVuSansMono', 'Courier New', monospace;  /* Terminal, Adressen, Code */
+    --font-ui:      system-ui, sans-serif;                        /* UI-Elemente, Labels */
+
+    /* Layoutgrößen */
+    --header-h:     calc(var(--header-btn-size, 14px) + 28px);   /* Höhe der Kopfzeile — skaliert mit Button-Größe */
+    --tab-h:        34px;   /* Höhe eines Terminal-Tabs */
+
+    /* Dynamische Schriftgrößen — werden per JS aus config.json gesetzt */
+    /* --kb-font-size: 11px;   Keyboard-Toolbar-Buttons */
+    /* --ui-font-size: 13px;   Launcher-Dialoge, Labels */
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   2. RESET & BASIS
+   ════════════════════════════════════════════════════════════ */
+*, *::before, *::after {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+html, body {
+    height: 100%;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-ui);
+    font-size: 13px;
+    overflow: hidden;   /* Kein Scrollen der Seite selbst — nur Terminal scrollt */
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   3. APP-LAYOUT
+   Dreizeiliges CSS-Grid:
+   - Zeile 1: Header (feste Höhe)
+   - Zeile 2: Keyboard-Toolbar (auto — kollabiert wenn display:none)
+   - Zeile 3: Terminal-Bereich (füllt restlichen Raum)
+   ════════════════════════════════════════════════════════════ */
+#app {
+    display: grid;
+    grid-template-rows: var(--header-h) auto 1fr;
+    height: 100vh;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   4. HEADER & TABS
+   ════════════════════════════════════════════════════════════ */
+
+/* Kopfzeile — enthält Logo, Aktions-Buttons und Tab-Leiste */
+#header {
+    display: flex;
+    align-items: center;
+    padding: 0 12px 0 14px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    gap: calc(var(--header-btn-size, 14px) * 0.4);   /* Abstand skaliert mit Schriftgröße */
+    min-width: 0;   /* Verhindert Überlauf bei vielen Tabs */
+}
+
+/* Logo "webssh" — Mono-Font, "ssh" in Akzentfarbe */
+.logo {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    line-height: 1.1;
+    white-space: nowrap;
+    flex-shrink: 0;
+    gap: 0;
+}
+.logo-brand {
+    font-family: var(--font-mono);
+    font-size: 9px;
+    font-weight: 400;
+    color: var(--text-muted);
+    letter-spacing: 0.5px;
+    text-transform: lowercase;
+}
+.logo-name {
+    font-family: var(--font-mono);
+    font-size: 15px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: -0.5px;
+}
+.logo-name span { color: var(--accent); }
+
+/* Gemeinsamer Stil für Header-Buttons (Launcher, Keyboard-Toggle) */
+#launcher-btn,
+#kb-toggle-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width:  calc(var(--header-btn-size, 14px) + 12px);   /* skaliert mit Schriftgröße */
+    height: calc(var(--header-btn-size, 14px) + 12px);
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: var(--header-btn-size, 14px);
+    flex-shrink: 0;
+    transition: all 0.15s;
+    user-select: none;
+}
+
+#launcher-btn:hover,
+#kb-toggle-btn:hover  { background: var(--bg-hover); color: var(--text-bright); border-color: var(--accent); }
+
+#launcher-btn.active,
+#kb-toggle-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+/* Tab-Leiste — horizontal scrollbar bei vielen Tabs, Scrollbalken versteckt */
+#tab-bar {
+    display: flex;
+    gap: 2px;
+    flex: 1;
+    overflow-x: auto;
+    scrollbar-width: none;
+    min-width: 0;
+}
+#tab-bar::-webkit-scrollbar { display: none; }
+
+/* Einzelner Tab */
+.tab {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 0 11px;
+    height: var(--tab-h);
+    border-radius: 6px 6px 0 0;
+    border: 1px solid transparent;
+    border-bottom: none;
+    background: transparent;
+    color: var(--text-muted);
+    cursor: pointer;
+    white-space: nowrap;
+    font-size: 12px;
+    transition: all 0.12s;
+    user-select: none;
+    flex-shrink: 0;
+}
+.tab:hover  { background: var(--bg-hover); color: var(--text); }
+.tab.active { background: var(--bg); border-color: var(--border); color: var(--text-bright); }
+
+/* Status-Punkt im Tab — Farbe zeigt Verbindungszustand */
+.tab-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: var(--text-muted);   /* Standard: inaktiv/grau */
+    flex-shrink: 0;
+}
+.tab.active       .tab-dot { background: var(--success); }        /* Verbunden */
+.tab.error        .tab-dot { background: var(--danger); }         /* Fehler/getrennt */
+.tab.loading      .tab-dot { background: var(--accent); animation: pulse 1s infinite; }
+.tab.reconnecting .tab-dot { background: var(--warn);   animation: pulse 0.6s infinite; }
+
+/* Schließen-Button im Tab — nur bei Hover sichtbar */
+.tab-close {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 15px;
+    height: 15px;
+    border-radius: 3px;
+    opacity: 0;
+    transition: opacity 0.12s;
+    font-size: 11px;
+}
+.tab:hover .tab-close { opacity: 0.5; }
+.tab-close:hover      { opacity: 1 !important; background: var(--bg-hover); }
+
+/* Puls-Animation für Lade- und Reconnect-Zustände */
+@keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.3; }
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   5. TERMINAL-BEREICH
+   Nimmt den gesamten verbleibenden Raum ein (Grid-Zeile 3).
+   Terminal-Panes sind absolut positioniert, nur der aktive
+   Pane ist sichtbar (display: block).
+   ════════════════════════════════════════════════════════════ */
+#terminal-area {
+    position: relative;
+    background: var(--bg);
+    overflow: hidden;
+    grid-row: 3;   /* Explizit Grid-Zeile 3 — verhindert Kollaps wenn Toolbar fehlt */
+}
+
+/* Container für eine xterm.js-Instanz */
+.terminal-pane {
+    position: absolute;
+    inset: 0;
+    padding: 4px 4px 4px 6px;
+    display: none;   /* Standardmäßig versteckt */
+}
+.terminal-pane.active { display: block; }
+
+/* xterm.js-Überschreibungen */
+.xterm { height: 100%; }
+.xterm-viewport { background: transparent !important; }   /* Eigener Hintergrund statt xterm-Standard */
+
+
+/* ════════════════════════════════════════════════════════════
+   6. WELCOME-SCREEN
+   Zentrierte Anzeige wenn keine Session offen ist.
+   ════════════════════════════════════════════════════════════ */
+#welcome {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    color: var(--text-muted);
+}
+#welcome .wl {
+    font-family: var(--font-mono);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    line-height: 1.1;
+    gap: 2px;
+}
+#welcome .wl-brand {
+    font-size: 13px;
+    font-weight: 400;
+    color: var(--accent);
+    letter-spacing: 2px;
+    text-transform: lowercase;
+    opacity: 0.85;
+}
+#welcome .wl-name {
+    font-size: 38px;
+    font-weight: 700;
+    color: var(--text-bright);
+    letter-spacing: -1px;
+}
+#welcome .wl-name span { color: var(--accent); }
+#welcome p { font-size: 13px; }
+
+/* Tastatur-Shortcut-Darstellung im Welcome-Text */
+#welcome kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 2px 8px;
+    border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-bright);
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   7. KEYBOARD-TOOLBAR
+   Schmale Leiste unter dem Header mit Ctrl- und F-Key-Buttons.
+   Öffnet/schließt per Toggle-Button.
+   ════════════════════════════════════════════════════════════ */
+#kb-toolbar {
+    display: none;          /* Standardmäßig ausgeblendet */
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 3px;
+    padding: 3px 10px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    font-size: var(--kb-font-size, 11px);
+    overflow: hidden;
+}
+#kb-toolbar.open { display: flex; }
+
+/* "STRG:"-Beschriftung vor den Ctrl-Buttons */
+.kb-label {
+    color: var(--text-muted);
+    font-size: var(--kb-font-size, 11px);
+    white-space: nowrap;
+    margin-right: 2px;
+}
+
+/* Einzelner Keyboard-Button */
+.kb-btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 22px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: var(--bg-hover);
+    color: var(--text);
+    cursor: pointer;
+    font-size: var(--kb-font-size, 11px);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    transition: all 0.1s;
+    user-select: none;
+}
+.kb-btn:hover  { background: var(--accent-dim); border-color: var(--accent); color: var(--text-bright); }
+.kb-btn:active { background: var(--accent); color: white; transform: scale(0.95); }
+
+/* Visueller Trenner zwischen Ctrl- und F-Key-Gruppe */
+.kb-sep {
+    width: 1px;
+    height: 14px;
+    background: var(--border);
+    margin: 0 4px;
+    flex-shrink: 0;
+}
+
+/* F-Tasten-Gruppe
+   Normalzustand: contents (Kinder flowen direkt in die Toolbar-Zeile)
+   Umbrechend:    flex (eigene Zeile wenn nicht alles passt) */
+#kb-fkeys { display: contents; }
+#kb-fkeys.wrap-row {
+    display: flex;
+    flex-basis: 100%;   /* Erzwingt neue Zeile */
+    gap: 3px;
+    padding-top: 2px;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   8. LAUNCHER-OVERLAY
+   Modalfenster zur Server-Auswahl. Öffnet sich über dem
+   Terminal. Hintergrund wird leicht abgedunkelt und unscharf.
+   ════════════════════════════════════════════════════════════ */
+
+/* Hintergrund-Overlay */
+#launcher-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 100;
+    background: rgba(1, 4, 9, 0.75);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 60px;
+}
+#launcher-overlay.open { display: flex; }
+
+/* Zentrales Panel */
+#launcher-panel {
+    width: min(680px, 94vw);
+    max-height: calc(100vh - 120px);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0, 0, 0, 0.6);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    animation: launcher-in 0.18s ease;
+}
+
+/* Einblend-Animation */
+@keyframes launcher-in {
+    from { opacity: 0; transform: translateY(-12px) scale(0.98); }
+    to   { opacity: 1; transform: none; }
+}
+
+/* Suchfeld-Zeile */
+#launcher-search-wrap {
+    padding: 14px 16px 10px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+#launcher-search-wrap .search-icon {
+    color: var(--text-muted);
+    font-size: 15px;
+    flex-shrink: 0;
+}
+#launcher-search {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    font-size: calc(var(--ui-font-size, 13px) + 2px);
+    color: var(--text-bright);
+    font-family: var(--font-ui);
+}
+#launcher-search::placeholder { color: var(--text-muted); }
+
+.search-hint {
+    font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* Scrollbarer Inhaltsbereich des Launchers */
+#launcher-body {
+    overflow-y: auto;
+    padding: 8px 10px 12px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+/* Keine-Treffer-Meldung */
+#launcher-empty {
+    display: none;
+    padding: 32px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 13px;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   9. AKTIVE SESSIONS (im Launcher)
+   Kompakte Kacheln nebeneinander. Jede Kachel zeigt
+   Servername, Adresse und einen Schließen-Button.
+   ════════════════════════════════════════════════════════════ */
+#active-sessions-section { margin-bottom: 8px; }
+
+#active-sessions-section .section-label {
+    padding: 6px 8px 4px;
+    font-size: calc(var(--ui-font-size, 13px) - 2px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+}
+
+/* Flexbox-Wrap — Kacheln umbrechen bei Platzmangel */
+#active-sessions-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    padding-bottom: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 8px;
+}
+
+.active-session-item {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 5px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    cursor: pointer;
+    transition: all 0.12s;
+    background: var(--bg-active);
+    min-width: 0;
+    max-width: 220px;   /* Begrenzt Breite damit mehrere nebeneinander passen */
+}
+.active-session-item:hover { border-color: var(--accent); }
+
+/* Status-Punkt: grün = aktiv, gelb = verwaist (kein WebSocket) */
+.asi-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); flex-shrink: 0; }
+.asi-dot.orphan { background: var(--warn); }
+
+.asi-info { min-width: 0; overflow: hidden; }
+.asi-title {
+    font-size: var(--ui-font-size, 13px);
+    font-weight: 500;
+    color: var(--text-bright);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.asi-meta {
+    font-size: calc(var(--ui-font-size, 13px) - 2px);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Session-Schließen-Button — nur bei Hover sichtbar */
+.asi-close {
+    opacity: 0.4;
+    font-size: 12px;
+    padding: 1px 4px;
+    border-radius: 3px;
+    transition: all 0.12s;
+    flex-shrink: 0;
+}
+.asi-close:hover { opacity: 1; background: var(--danger); color: white; }
+
+
+/* ════════════════════════════════════════════════════════════
+   10. SERVER-KATEGORIEN & KARTEN (im Launcher)
+   ════════════════════════════════════════════════════════════ */
+
+/* Kategorie-Abschnitt — enthält Header und Karten-Grid */
+.category-section { margin-bottom: 4px; }
+
+/* Klickbarer Kategorie-Header mit Pfeil-Indikator */
+.category-header {
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 8px 4px;
+    cursor: pointer;
+    border-radius: 6px;
+    color: var(--text-muted);
+    font-size: calc(var(--ui-font-size, 13px) - 2px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    user-select: none;
+    transition: background 0.1s;
+}
+.category-header:hover { background: var(--bg-hover); }
+
+/* Pfeil dreht sich beim Zuklappen */
+.category-chevron { font-size: 9px; transition: transform 0.2s; flex-shrink: 0; }
+.category-section.collapsed .category-chevron { transform: rotate(-90deg); }
+.category-section.collapsed .category-items   { display: none; }
+
+/* Karten-Grid — auto-fill mit Mindestbreite */
+.category-items {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 4px;
+    padding: 2px 0 4px;
+}
+
+/* Server-Karte */
+.server-card {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 9px 12px;
+    border-radius: 7px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: all 0.12s;
+}
+.server-card:hover  { background: var(--bg-hover); border-color: var(--border); }
+.server-card:active { background: var(--bg-active); }
+.server-card.hidden { display: none; }   /* Wird durch Suche gesetzt */
+
+/* Icon-Quadrat links in der Karte */
+.sc-icon {
+    width: 30px;
+    height: 30px;
+    border-radius: 7px;
+    background: var(--bg-active);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    flex-shrink: 0;
+    color: var(--accent);
+}
+
+.sc-info { min-width: 0; }
+.sc-name {
+    font-size: var(--ui-font-size, 13px);
+    font-weight: 500;
+    color: var(--text-bright);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.sc-addr {
+    font-size: calc(var(--ui-font-size, 13px) - 2px);
+    color: var(--text-muted);
+    font-family: var(--font-mono);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   11. TAKEOVER-BANNER
+   Vollbild-Modal das erscheint wenn eine andere Browser-Instanz
+   die Sessions übernommen hat (session_mode: single_user).
+   ════════════════════════════════════════════════════════════ */
+#takeover-banner {
+    display: none;
+    position: fixed;
+    inset: 0;
+    z-index: 200;
+    background: rgba(1, 4, 9, 0.88);
+    backdrop-filter: blur(4px);
+    align-items: center;
+    justify-content: center;
+}
+#takeover-banner.show { display: flex; }
+
+#takeover-inner {
+    background: var(--bg-panel);
+    border: 1px solid var(--warn);
+    border-radius: 12px;
+    padding: 32px 40px;
+    max-width: 480px;
+    text-align: center;
+    box-shadow: 0 16px 48px rgba(0, 0, 0, 0.5);
+}
+#takeover-inner .ti-icon { font-size: 32px; margin-bottom: 12px; }
+#takeover-inner h2       { font-size: 16px; color: var(--text-bright); margin-bottom: 10px; }
+#takeover-inner p        { font-size: 13px; color: var(--text-muted); line-height: 1.6; margin-bottom: 20px; }
+
+#takeover-reload {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 8px 20px;
+    border-radius: 7px;
+    background: var(--accent);
+    color: white;
+    border: none;
+    font-size: 13px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+}
+#takeover-reload:hover { opacity: 0.85; }
+
+
+/* ════════════════════════════════════════════════════════════
+   12. SETTINGS-MODAL
+   Einstellungs-Dialog mit Tab-Navigation.
+   Öffnet sich als zentriertes Modal über dem Terminal.
+   ════════════════════════════════════════════════════════════ */
+
+/* Settings-Button in der Titelleiste */
+#logout-btn {
+    display: flex; align-items: center; justify-content: center;
+    width:  calc(var(--header-btn-size, 14px) + 12px);
+    height: calc(var(--header-btn-size, 14px) + 12px);
+    border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); cursor: pointer; font-size: var(--header-btn-size, 14px);
+    flex-shrink: 0; transition: all 0.15s; user-select: none;
+    margin-left: auto;
+}
+#logout-btn:hover { background: rgba(248,81,73,0.15); color: var(--danger); border-color: var(--danger); }
+
+#settings-btn {
+    display: flex; align-items: center; justify-content: center;
+    width:  calc(var(--header-btn-size, 14px) + 12px);
+    height: calc(var(--header-btn-size, 14px) + 12px);
+    border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); cursor: pointer; font-size: var(--header-btn-size, 14px);
+    flex-shrink: 0; transition: all 0.15s; user-select: none;
+}
+#settings-btn:hover  { background: var(--bg-hover); color: var(--text-bright); border-color: var(--accent); }
+#settings-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+/* Hintergrund-Overlay */
+#settings-overlay {
+    position: fixed; inset: 0; z-index: 100;
+    background: rgba(1,4,9,0.75);
+    backdrop-filter: blur(3px);
+    display: none;
+    align-items: flex-start;
+    justify-content: center;
+    padding-top: 40px;
+    overflow-y: auto;
+}
+#settings-overlay.open { display: flex; }
+
+/* Haupt-Panel */
+#settings-panel {
+    width: min(700px, 96vw);
+    max-height: calc(100vh - 80px);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    position: relative;
+    animation: launcher-in 0.18s ease;  /* gleiche Animation wie Launcher */
+}
+
+/* Modal-Header */
+#settings-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 14px 18px 12px;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+#settings-title {
+    font-size: calc(var(--settings-font-size, 13px) + 1px); font-weight: 600; color: var(--text-bright);
+}
+#settings-close {
+    background: transparent; border: none; cursor: pointer;
+    color: var(--text-muted); font-size: 14px; padding: 2px 6px;
+    border-radius: 4px; transition: all 0.12s;
+}
+#settings-close:hover { background: var(--danger); color: white; }
+
+/* Tab-Navigation */
+#settings-tabs {
+    display: flex; gap: 2px;
+    padding: 8px 14px 0;
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+.stab {
+    padding: 6px 14px; border-radius: 6px 6px 0 0;
+    border: 1px solid transparent; border-bottom: none;
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; font-size: var(--settings-font-size, 13px);
+    transition: all 0.12s; user-select: none;
+}
+.stab:hover  { color: var(--text); background: var(--bg-hover); }
+.stab.active { color: var(--text-bright); background: var(--bg); border-color: var(--border); }
+
+/* Tab-Inhalte */
+#settings-body {
+    flex: 1; overflow-y: auto;
+    padding: 16px 18px;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+.stab-content         { display: none; }
+.stab-content.active  { display: block; }
+
+/* Abschnitts-Titel innerhalb eines Tabs */
+.stab-section-title {
+    font-size: calc(var(--settings-font-size, 13px) - 1px); font-weight: 600;
+    text-transform: uppercase; letter-spacing: 0.07em;
+    color: var(--text-muted);
+    margin-bottom: 10px;
+}
+
+/* Einstellungs-Abschnitt — visuell getrennte Gruppe */
+.settings-section {
+    margin-bottom: 20px;
+    padding-bottom: 16px;
+    border-bottom: 1px solid var(--border);
+}
+.settings-section:last-child { border-bottom: none; }
+
+/* Hinweistext unter einem Abschnitt */
+.settings-hint {
+    font-size: calc(var(--settings-font-size, 13px) - 2px); color: var(--text-muted);
+    margin-top: 8px; line-height: 1.5;
+}
+
+/* Zwei-Spalten-Formular-Grid: Label | Input */
+.form-grid {
+    display: grid;
+    grid-template-columns: 180px 1fr;
+    gap: 8px 12px;
+    align-items: center;
+}
+.form-grid label {
+    font-size: var(--settings-font-size, 13px); color: var(--text);
+    white-space: nowrap;
+}
+
+/* Einheitlicher Input-Stil */
+.form-grid input[type="text"],
+.form-grid input[type="number"],
+.form-grid input[type="password"],
+.form-grid select {
+    width: 100%;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 5px 9px;
+    color: var(--text-bright);
+    font-size: var(--settings-font-size, 13px);
+    font-family: var(--font-ui);
+    outline: none;
+    transition: border-color 0.15s;
+}
+.form-grid input:focus,
+.form-grid select:focus { border-color: var(--accent); }
+
+/* Checkbox — größer und besser sichtbar */
+.s-checkbox {
+    width: 16px !important;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* Zeilengruppe für Feld + Hinweistext nebeneinander */
+.inline-row {
+    display: flex; align-items: center; gap: 8px;
+}
+.field-hint {
+    font-size: 11px; color: var(--text-muted); white-space: nowrap;
+}
+
+/* Radio-Gruppe */
+.radio-group {
+    display: flex; gap: 16px; align-items: center;
+}
+.radio-group label {
+    display: flex; align-items: center; gap: 5px;
+    font-size: 13px; color: var(--text); cursor: pointer;
+    white-space: nowrap;
+}
+.radio-group input[type="radio"] { accent-color: var(--accent); }
+
+/* ── Preset-Liste ── */
+#preset-list-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 10px;
+}
+
+
+
+/* ── Preset-Formular (modal über dem Settings-Panel) ── */
+#preset-form-overlay {
+    position: absolute;
+    inset: 0;
+    z-index: 10;
+    background: rgba(1,4,9,0.7);
+    backdrop-filter: blur(2px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+}
+#preset-form-overlay.hidden { display: none; }
+
+#preset-form {
+    width: min(560px, 92%);
+    max-height: calc(100% - 40px);
+    overflow-y: auto;
+    padding: 16px 18px;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-top: 2px solid var(--accent);
+    border-radius: 10px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    animation: launcher-in 0.15s ease;
+}
+.pf-header {
+    display: flex; align-items: center; justify-content: space-between;
+    margin-bottom: 14px;
+}
+#pf-title {
+    font-size: var(--settings-font-size, 13px); font-weight: 600; color: var(--text-bright);
+}
+.pf-actions {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-top: 14px; padding-top: 12px;
+    border-top: 1px solid var(--border);
+}
+.pf-actions-right {
+    display: flex; gap: 8px;
+}
+
+/* ── Buttons ── */
+.s-btn-primary {
+    padding: 6px 14px; border-radius: 6px;
+    background: var(--accent); color: white;
+    border: none; font-size: var(--settings-font-size, 13px); cursor: pointer;
+    transition: opacity 0.15s;
+}
+.s-btn-primary:hover { opacity: 0.85; }
+
+.s-btn-secondary {
+    padding: 6px 14px; border-radius: 6px;
+    background: transparent; color: var(--text);
+    border: 1px solid var(--border); font-size: var(--settings-font-size, 13px); cursor: pointer;
+    transition: all 0.12s;
+}
+.s-btn-secondary:hover { border-color: var(--text); }
+
+.s-btn-danger {
+    padding: 4px 10px; border-radius: 5px;
+    background: transparent; color: var(--danger);
+    border: 1px solid var(--danger); font-size: calc(var(--settings-font-size, 13px) - 1px); cursor: pointer;
+    transition: all 0.12s;
+}
+.s-btn-danger:hover { background: var(--danger); color: white; }
+
+/* hidden-Hilfsklasse */
+.hidden { display: none !important; }
+
+
+/* ════════════════════════════════════════════════════════════
+   13. SFTP DATEIMANAGER
+   Zweispaltiger Dateimanager ähnlich Midnight Commander.
+   ════════════════════════════════════════════════════════════ */
+
+/* SFTP-Button in der Titelleiste */
+#sftp-btn {
+    display: flex; align-items: center; justify-content: center;
+    width:  calc(var(--header-btn-size, 14px) + 12px);
+    height: calc(var(--header-btn-size, 14px) + 12px);
+    border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); cursor: pointer; font-size: var(--header-btn-size, 14px);
+    flex-shrink: 0; transition: all 0.15s; user-select: none;
+}
+#sftp-btn:hover  { background: var(--bg-hover); color: var(--text-bright); border-color: var(--accent); }
+#sftp-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+/* SFTP als Tab-Pane */
+.sftp-tab-pane {
+    display: none;
+    flex-direction: column;
+    background: var(--bg-panel);
+    overflow: hidden;
+}
+.sftp-tab-pane.active {
+    display: flex !important;
+    position: absolute;
+    inset: 0;
+}
+
+/* SFTP-Tab Dot */
+#sftp-tab .tab-dot { background: var(--accent); }
+
+/* Aktionsleiste */
+#sftp-toolbar {
+    display: flex; align-items: center; gap: 4px;
+    padding: 6px 12px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    flex-wrap: wrap;
+}
+
+.sftp-action-btn {
+    padding: 4px 10px; border-radius: 5px;
+    border: 1px solid var(--border);
+    background: var(--bg-hover); color: var(--text);
+    cursor: pointer; font-size: var(--sftp-font-size, 12px);
+    transition: all 0.12s; white-space: nowrap;
+}
+.sftp-action-btn:hover:not(:disabled)  { border-color: var(--accent); color: var(--text-bright); }
+.sftp-action-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+.sftp-danger-btn:hover:not(:disabled) { border-color: var(--danger); color: var(--danger); }
+
+.sftp-toolbar-sep { width: 1px; height: 18px; background: var(--border); margin: 0 4px; flex-shrink: 0; }
+
+#sftp-status {
+    margin-left: auto;
+    font-size: 12px; color: var(--text-muted);
+    white-space: nowrap;
+}
+#sftp-status.error  { color: var(--danger); }
+#sftp-status.ok     { color: var(--success); }
+#sftp-status.busy   { color: var(--accent); }
+
+/* Zwei-Panel-Layout */
+#sftp-panels {
+    display: grid;
+    grid-template-columns: 1fr 3px 1fr;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+#sftp-divider {
+    background: var(--border);
+    cursor: col-resize;
+}
+
+.sftp-panel {
+    display: flex; flex-direction: column;
+    min-height: 0; overflow: hidden;
+}
+
+/* Panel-Header mit Server-Auswahl */
+.sftp-panel-header {
+    display: flex; align-items: center; gap: 6px;
+    padding: 6px 10px;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+.sftp-server-select {
+    flex: 1;
+    background: var(--bg-panel); border: 1px solid var(--border);
+    border-radius: 5px; padding: 4px 8px;
+    color: var(--text-bright); font-size: var(--sftp-font-size, 12px); outline: none;
+}
+
+.sftp-connect-btn {
+    padding: 4px 10px; border-radius: 5px;
+    border: 1px solid var(--accent);
+    background: var(--accent-dim); color: var(--accent);
+    cursor: pointer; font-size: var(--sftp-font-size, 12px); white-space: nowrap;
+    transition: all 0.12s; flex-shrink: 0;
+}
+.sftp-connect-btn:hover { background: var(--accent); color: white; }
+.sftp-connect-btn.connected { border-color: var(--success); background: rgba(63,185,80,0.1); color: var(--success); }
+.sftp-connect-btn.connected:hover { background: var(--danger); border-color: var(--danger); color: white; }
+
+/* Pfad-Anzeige (Breadcrumb) */
+.sftp-path-bar {
+    display: flex; align-items: center; gap: 0;
+    padding: 4px 10px;
+    font-family: var(--font-mono); font-size: var(--sftp-font-size, 12px);
+    color: var(--text-muted);
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    white-space: nowrap; overflow: hidden;
+    flex-shrink: 0; min-height: 26px;
+}
+
+.sftp-bc-seg {
+    color: var(--accent); cursor: pointer;
+    padding: 1px 3px; border-radius: 3px;
+    transition: background 0.1s;
+}
+.sftp-bc-seg:hover { background: var(--accent-dim); }
+
+.sftp-bc-sep {
+    color: var(--text-muted); padding: 0 1px;
+    user-select: none;
+}
+
+.sftp-bc-copy {
+    margin-left: auto; padding: 1px 6px;
+    font-size: calc(var(--sftp-font-size, 12px) - 1px);
+    color: var(--success); cursor: pointer;
+    border: 1px solid var(--success);
+    border-radius: 3px; transition: all 0.1s;
+    flex-shrink: 0; user-select: none;
+}
+.sftp-bc-copy:hover { background: rgba(63,185,80,0.15); }
+
+/* Dateiliste */
+.sftp-file-list {
+    flex: 1; overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.sftp-placeholder {
+    padding: 40px; text-align: center;
+    color: var(--text-muted); font-size: 13px;
+}
+
+.sftp-entry.sftp-cursor {
+    outline: 1px solid var(--accent);
+    outline-offset: -1px;
+}
+
+.sftp-fkey {
+    font-size: 0.8em;
+    opacity: 0.6;
+}
+
+.sftp-symlink-badge {
+    font-size: 0.8em; color: var(--text-muted);
+    margin-left: 3px; vertical-align: middle;
+}
+
+/* Datei-Zeile */
+.sftp-entry {
+    display: grid;
+    grid-template-columns: 20px 18px var(--sftp-col-name, minmax(0, 1fr)) var(--sftp-col-size, 7em) var(--sftp-col-mtime, 10em) var(--sftp-col-owner, 0px) var(--sftp-col-perms, 0px);
+    align-items: center;
+    gap: 3px;
+    padding: 3px 10px;
+    font-size: var(--sftp-font-size, 12px);
+    cursor: pointer;
+    border-bottom: 1px solid transparent;
+    user-select: none;
+    transition: background 0.08s;
+}
+.sftp-entry:hover    { background: var(--bg-hover); }
+.sftp-entry.selected { background: var(--bg-active); border-bottom-color: var(--border); }
+.sftp-entry.focused  { outline: 1px solid var(--accent); }
+
+.sftp-entry input[type="checkbox"] { accent-color: var(--accent); cursor: pointer; }
+.sftp-entry .se-icon  { text-align: center; font-size: calc(var(--sftp-font-size, 12px) + 1px); }
+.sftp-entry .se-name  { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text-bright); border-right: 1px solid var(--border); padding: 0 4px 0 3px; }
+.sftp-entry .se-name.is-dir { color: var(--accent); font-weight: 500; }
+
+/* Metadaten-Spalten: kleinere Schrift */
+.sftp-entry .se-size,
+.sftp-entry .se-mtime,
+.sftp-entry .se-owner,
+.sftp-entry .se-perms {
+    font-family: var(--font-mono);
+    font-size: calc(var(--sftp-font-size, 12px) - 2px);
+    color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+    padding: 0 4px;
+}
+/* Trenner als linker Border auf den Spalten nach der Namensspalte */
+.sftp-entry .se-size  { text-align: right; }
+.sftp-entry .se-mtime { border-left: 1px solid var(--border); }
+.sftp-entry .se-owner { border-left: 1px solid var(--border); }
+
+/* owner/perms: nur sichtbar wenn Toggle aktiv */
+.sftp-entry .se-owner { display: var(--sftp-show-owner, none); }
+.sftp-entry .se-perms { display: var(--sftp-show-perms, none); }
+
+/* Spalten-Header — identisches Grid wie sftp-entry für exakte Ausrichtung */
+.sftp-list-header {
+    display: grid;
+    grid-template-columns: 20px 18px var(--sftp-col-name, minmax(0, 1fr)) var(--sftp-col-size, 7em) var(--sftp-col-mtime, 10em) var(--sftp-col-owner, 0px) var(--sftp-col-perms, 0px);
+    gap: 3px;
+    padding: 3px 10px;
+    font-size: calc(var(--sftp-font-size, 12px) - 2px); font-weight: 600;
+    color: var(--text-muted); text-transform: uppercase;
+    letter-spacing: 0.05em;
+    background: var(--bg);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    position: sticky; top: 0; z-index: 1;
+    align-items: center;
+}
+/* Platzhalter für Checkbox + Icon: unsichtbar, aber Platz bleibt erhalten */
+.sftp-list-header .sh-placeholder { visibility: hidden; }
+
+/* Header-Trenner */
+.sftp-list-header .sh-name  { border-right: 1px solid var(--border); padding-right: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sftp-list-header .sh-size  { padding: 0 4px; }
+.sftp-list-header .sh-mtime { border-left: 1px solid var(--border); padding-left: 4px; }
+
+/* Header owner/perms */
+.sftp-list-header .sh-owner { display: var(--sftp-show-owner, none); border-left: 1px solid var(--border); padding-left: 4px; }
+.sftp-list-header .sh-perms { display: var(--sftp-show-perms, none); padding-left: 4px; }
+
+
+/* Fortschrittsanzeige beim Transfer */
+#sftp-progress {
+    position: absolute; bottom: 0; left: 0; right: 0;
+    height: 3px; background: var(--bg-hover);
+    display: none;
+}
+#sftp-progress-bar {
+    height: 100%; background: var(--accent);
+    transition: width 0.2s;
+    width: 0%;
+}
+
+/* Aktives SFTP-Panel — visuell hervorgehoben */
+.sftp-panel-active .sftp-path-bar {
+    background: var(--accent-dim);
+    color: var(--text-bright);
+    border-bottom-color: var(--accent);
+}
+.sftp-panel-active .sftp-panel-header {
+    border-bottom-color: var(--accent);
+}
+
+/* Upload/Download Buttons farbig */
+.sftp-upload-btn-style   { color: #e8a020 !important; border-color: #e8a020 !important; }
+.sftp-upload-btn-style:hover:not(:disabled)   { background: rgba(232,160,32,0.15) !important; }
+.sftp-download-btn-style { color: var(--success) !important; border-color: var(--success) !important; }
+.sftp-download-btn-style:hover:not(:disabled) { background: rgba(63,185,80,0.15) !important; }
+
+/* Header-Trenner vor Settings/Logout */
+.header-sep {
+    width: 1px; height: 20px;
+    background: var(--border);
+    flex-shrink: 0;
+    margin: 0 4px;
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   14. BESTÄTIGUNGS-DIALOG
+   Ersetzt den nativen confirm() mit eigenem Modal.
+   ════════════════════════════════════════════════════════════ */
+
+#confirm-overlay {
+    position: fixed; inset: 0; z-index: 200;
+    background: rgba(1,4,9,0.75);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#confirm-overlay.open { display: flex; }
+
+#confirm-box {
+    width: min(380px, 90vw);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    overflow: hidden;
+    animation: launcher-in 0.15s ease;
+}
+
+#confirm-title {
+    padding: 14px 18px 12px;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-bright);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+}
+
+#confirm-message {
+    padding: 18px;
+    font-size: 13px;
+    color: var(--text);
+    line-height: 1.5;
+}
+
+#confirm-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+}
+
+
+/* ════════════════════════════════════════════════════════════
+   15. SPLIT-VIEW GRID
+   ════════════════════════════════════════════════════════════ */
+
+/* Split-Button */
+#split-btn {
+    display: flex; align-items: center; justify-content: center;
+    width:  calc(var(--header-btn-size, 14px) + 12px);
+    height: calc(var(--header-btn-size, 14px) + 12px);
+    border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); cursor: pointer;
+    font-size: var(--header-btn-size, 14px);
+    flex-shrink: 0; transition: all 0.15s; user-select: none;
+}
+#split-btn:hover  { background: var(--bg-hover); color: var(--text-bright); border-color: var(--accent); }
+#split-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }
+
+/* Split-Menü Dropdown */
+#split-menu {
+    position: fixed; z-index: 90;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: none; flex-direction: column; gap: 2px;
+    min-width: 180px;
+}
+#split-menu.open { display: flex; }
+
+.split-menu-item {
+    padding: 7px 12px; border-radius: 5px;
+    background: transparent; border: none;
+    color: var(--text); font-size: 13px;
+    cursor: pointer; text-align: left;
+    transition: background 0.1s;
+}
+.split-menu-item:hover { background: var(--bg-hover); color: var(--text-bright); }
+.split-menu-sep { height: 1px; background: var(--border); margin: 3px 0; }
+
+/* Tab-Kontextmenü */
+#tab-context-menu {
+    position: fixed; z-index: 90;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: none; flex-direction: column; gap: 2px;
+    min-width: 200px;
+}
+#tab-context-menu.open { display: flex; }
+
+.tab-ctx-item {
+    padding: 7px 12px; border-radius: 5px;
+    background: transparent; border: none;
+    color: var(--text); font-size: 13px;
+    cursor: pointer; text-align: left;
+    transition: background 0.1s;
+}
+.tab-ctx-item:hover { background: var(--bg-hover); color: var(--text-bright); }
+.tab-ctx-sep { height: 1px; background: var(--border); margin: 3px 0; }
+
+/* Terminal-Area Grid-Layouts */
+#terminal-area.split-2x1 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr;
+    gap: 3px;
+}
+#terminal-area.split-1x2 {
+    display: grid !important;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3px;
+}
+#terminal-area.split-2x2 {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: 1fr 1fr;
+    gap: 3px;
+}
+
+/* Grid-Zelle */
+.grid-cell {
+    display: flex; flex-direction: column;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    overflow: hidden;
+    min-height: 0;
+    transition: border-color 0.15s;
+}
+.grid-cell.focused { border-color: var(--accent); }
+
+/* Grid-Zellen-Header */
+.grid-cell-header {
+    display: flex; align-items: center;
+    padding: 3px 6px;
+    background: var(--bg-panel);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+    gap: 6px;
+}
+.grid-cell-title {
+    flex: 1; font-size: 11px;
+    color: var(--text-muted);
+    white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.grid-cell.focused .grid-cell-title { color: var(--accent); }
+.grid-cell-actions { display: flex; gap: 2px; flex-shrink: 0; }
+.grid-cell-btn {
+    background: transparent; border: none;
+    color: var(--text-muted); cursor: pointer;
+    font-size: 11px; padding: 1px 4px; border-radius: 3px;
+    transition: all 0.1s;
+}
+.grid-cell-btn:hover { background: var(--bg-hover); color: var(--text-bright); }
+
+/* Pane im Grid-Modus — position und display überschreiben */
+.terminal-pane.grid-pane {
+    display: block !important;
+    position: relative !important;
+    inset: auto !important;
+    flex: 1;
+    min-height: 0;
+    width: 100%;
+}
+
+/* Leere Grid-Zelle */
+.grid-cell-empty {
+    flex: 1; display: flex;
+    align-items: center; justify-content: center;
+}
+.grid-pick-session-btn {
+    padding: 8px 16px; border-radius: 6px;
+    border: 1px dashed var(--border);
+    background: transparent; color: var(--text-muted);
+    cursor: pointer; font-size: 13px;
+    transition: all 0.15s;
+}
+.grid-pick-session-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Session-Picker Dropdown */
+#session-picker {
+    position: fixed; z-index: 95;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 4px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    display: none; flex-direction: column; gap: 2px;
+    min-width: 200px; max-height: 300px;
+    overflow-y: auto;
+}
+#session-picker.open { display: flex; }
+
+.picker-item {
+    display: flex; align-items: center; gap: 8px;
+    padding: 7px 12px; border-radius: 5px;
+    background: transparent; border: none;
+    color: var(--text); font-size: 13px;
+    cursor: pointer; text-align: left;
+    transition: background 0.1s;
+}
+.picker-item:hover { background: var(--bg-hover); color: var(--text-bright); }
+.picker-dot {
+    width: 7px; height: 7px; border-radius: 50%;
+    flex-shrink: 0;
+}
+.picker-dot.state-connected { background: var(--success); }
+.picker-dot.state-connecting { background: var(--accent); }
+.picker-dot.state-error { background: var(--danger); }
+.picker-empty { padding: 12px; color: var(--text-muted); font-size: 13px; text-align: center; }
+
+/* Grid-Zellen Status-Punkt */
+.grid-cell-state {
+    width: 7px; height: 7px; border-radius: 50%;
+    display: inline-block; flex-shrink: 0;
+}
+.grid-cell-state.state-connected  { background: var(--success); }
+.grid-cell-state.state-connecting { background: var(--accent); }
+.grid-cell-state.state-error      { background: var(--danger); }
+.grid-cell-state.state-empty      { display: none; }
+
+/* Grid-Tab */
+#grid-tab .tab-dot { background: var(--accent); }
+
+.split-menu-item:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.split-menu-info {
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--text-muted);
+    white-space: nowrap;
+}
+
+/* SFTP Lade-Spinner */
+.sftp-spinner {
+    display: inline-block;
+    width: 10px; height: 10px;
+    border: 2px solid var(--accent-dim);
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: sftp-spin 0.7s linear infinite;
+    margin-right: 6px;
+    vertical-align: middle;
+    flex-shrink: 0;
+}
+@keyframes sftp-spin {
+    to { transform: rotate(360deg); }
+}
+
+/* SFTP Fortschritts-Popup */
+#sftp-progress-popup {
+    display: none;
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 700px;
+    background: #1c2128;
+    border: 1px solid #444c56;
+    border-radius: 10px;
+    padding: 24px 32px;
+    align-items: center;
+    gap: 16px;
+    font-size: 20px;
+    color: #e6edf3;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.8);
+    z-index: 300;
+}
+#sftp-progress-popup.visible { display: flex; }
+
+.sftp-progress-body {
+    flex: 1;
+    min-width: 0;
+}
+.sftp-progress-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 12px;
+}
+#sftp-progress-file {
+    flex: 1;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    color: var(--text-bright);
+    font-family: var(--font-mono);
+    font-size: 20px;
+}
+#sftp-progress-count {
+    flex-shrink: 0;
+    color: var(--text-muted);
+    font-size: 20px;
+    white-space: nowrap;
+}
+#sftp-progress-abort {
+    flex-shrink: 0;
+    background: none;
+    border: 1px solid var(--border);
+    color: var(--text-muted);
+    border-radius: 4px;
+    padding: 4px 10px;
+    cursor: pointer;
+    font-size: 18px;
+    transition: all 0.1s;
+}
+#sftp-progress-abort:hover { border-color: var(--danger); color: var(--danger); }
+
+.sftp-progress-spinner {
+    width: 24px; height: 24px;
+    border: 3px solid #2d4a7a;
+    border-top-color: var(--accent);
+    border-radius: 50%;
+    animation: sftp-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+/* SFTP Konflikt-Dialog */
+#sftp-conflict-overlay {
+    position: fixed; inset: 0; z-index: 310;
+    background: rgba(1,4,9,0.75);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#sftp-conflict-overlay.open { display: flex; }
+
+#sftp-conflict-box {
+    width: min(720px, 90vw);
+    background: #1c2128;
+    border: 1px solid #444c56;
+    border-radius: 14px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.8);
+    overflow: hidden;
+    animation: launcher-in 0.15s ease;
+}
+
+#sftp-conflict-title {
+    padding: 24px 32px 20px;
+    font-size: 20px; font-weight: 600;
+    color: #d29922;
+    background: #161b22;
+    border-bottom: 1px solid #444c56;
+}
+
+#sftp-conflict-msg {
+    padding: 24px 32px;
+    font-size: 24px; color: #e6edf3;
+    background: #1c2128;
+    word-break: break-all;
+}
+
+#sftp-conflict-actions {
+    padding: 0 32px 28px;
+    display: flex; flex-direction: column; gap: 12px;
+}
+
+.sca-row {
+    display: flex; gap: 8px;
+}
+.sca-row-abort {
+    padding-top: 4px;
+    border-top: 1px solid var(--border);
+}
+
+.sca-btn {
+    flex: 1; padding: 14px 20px; border-radius: 8px;
+    border: 1px solid #444c56;
+    background: #262c35; color: #e6edf3;
+    cursor: pointer; font-size: 20px;
+    transition: all 0.12s;
+}
+.sca-overwrite:hover, .sca-overwrite-all:hover { border-color: var(--accent); color: var(--accent); }
+.sca-skip:hover, .sca-skip-all:hover           { border-color: var(--success); color: var(--success); }
+.sca-abort:hover                                { border-color: var(--danger); color: var(--danger); }
+.sca-all { font-size: 17px; }
+.sca-abort { flex: none; }
+
+/* Versionsnummer neben Logo */
+.version-badge {
+    font-size: 10px;
+    font-weight: 400;
+    color: var(--text-muted);
+    letter-spacing: 0;
+    vertical-align: middle;
+    margin-left: 2px;
+}
+
+/* ── Preset-Liste: kategorisiert und zweispaltig ─────────────── */
+
+/* Kategorie-Header in der Preset-Liste */
+.pli-category-header {
+    padding: 8px 4px 4px;
+    font-size: calc(var(--settings-font-size, 13px) - 2px);
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.07em;
+    color: var(--text-muted);
+    border-bottom: 1px solid var(--border);
+    margin: 8px 0 4px;
+}
+.pli-category-header:first-child { margin-top: 0; }
+
+/* Zweispaltiges Grid pro Kategorie */
+.pli-category-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr 1fr;
+    gap: 4px;
+    padding: 2px 0 4px;
+    border-radius: 6px;
+    transition: background 0.15s;
+    min-height: 36px;   /* Drop-Zone auch wenn leer */
+}
+.pli-category-grid.drag-over {
+    background: var(--accent-dim);
+    outline: 1px dashed var(--accent);
+}
+
+/* Preset-Eintrag im Grid */
+.preset-list-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 7px 10px;
+    border-radius: 6px;
+    border: 1px solid var(--border);
+    background: var(--bg-panel);
+    cursor: default;
+    transition: border-color 0.12s, background 0.12s;
+    min-width: 0;
+}
+.preset-list-item:hover        { border-color: var(--accent); }
+.preset-list-item.dragging     { opacity: 0.4; }
+.preset-list-item.drag-target  { border-color: var(--accent); background: var(--accent-dim); }
+
+/* Drag-Handle */
+.pli-drag {
+    color: var(--text-muted);
+    cursor: grab;
+    font-size: calc(var(--settings-font-size, 13px) + 1px);
+    flex-shrink: 0;
+    user-select: none;
+}
+.pli-drag:active { cursor: grabbing; }
+
+/* Info-Bereich */
+.pli-info   { flex: 1; min-width: 0; }
+.pli-name   { font-size: var(--settings-font-size, 13px); font-weight: 500; color: var(--text-bright);
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pli-addr   { font-size: calc(var(--settings-font-size, 13px) - 2px); color: var(--text-muted); font-family: var(--font-mono);
+              white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+
+/* Bearbeiten-Button */
+.pli-edit {
+    flex-shrink: 0;
+    padding: 3px 8px;
+    border-radius: 4px;
+    border: 1px solid var(--border);
+    background: transparent;
+    color: var(--text-muted);
+    font-size: calc(var(--settings-font-size, 13px) - 2px);
+    cursor: pointer;
+    transition: all 0.12s;
+    white-space: nowrap;
+}
+.pli-edit:hover { background: var(--bg-hover); color: var(--text-bright); border-color: var(--accent); }
+
+/* Leere Liste */
+.pli-empty {
+    padding: 24px;
+    text-align: center;
+    color: var(--text-muted);
+    font-size: var(--settings-font-size, 13px);
+}
+/* ── SFTP Datei-Vorschau Modal ─────────────────────────────── */
+#sftp-preview-overlay {
+    display: none;
+    position: fixed; inset: 0; z-index: 320;
+    background: rgba(1,4,9,0.8);
+    backdrop-filter: blur(2px);
+    align-items: center;
+    justify-content: center;
+}
+#sftp-preview-overlay.open { display: flex; }
+
+#sftp-preview-box {
+    width: min(900px, 92vw);
+    height: min(80vh, 800px);
+    background: #1c2128;
+    border: 1px solid #444c56;
+    border-radius: 12px;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.85);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+#sftp-preview-header {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+}
+#sftp-preview-title {
+    font-family: var(--font-mono);
+    font-size: 13px;
+    color: var(--text-bright);
+    flex: 1;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+#sftp-preview-meta {
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+#sftp-preview-close {
+    background: none;
+    border: none;
+    color: var(--text-muted);
+    cursor: pointer;
+    font-size: 14px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    flex-shrink: 0;
+}
+#sftp-preview-close:hover { color: var(--text-bright); background: var(--bg-panel); }
+
+#sftp-preview-content {
+    flex: 1;
+    overflow: auto;
+    margin: 0;
+    padding: 14px 18px;
+    font-family: var(--preview-font-family, var(--font-mono));
+    font-size: var(--preview-font-size, 13px);
+    color: var(--text-bright);
+    line-height: 1.5;
+    white-space: pre;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+#sftp-preview-footer {
+    padding: 6px 16px;
+    font-size: 11px;
+    color: var(--text-muted);
+    border-top: 1px solid var(--border);
+    background: var(--bg);
+    flex-shrink: 0;
+    min-height: 24px;
+}
+
+/* ── SFTP Eingabe-Dialog ───────────────────────────────────── */
+#sftp-input-overlay {
+    position: fixed; inset: 0; z-index: 350;
+    background: rgba(1,4,9,0.75);
+    backdrop-filter: blur(2px);
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#sftp-input-overlay.open { display: flex; }
+
+#sftp-input-box {
+    width: min(420px, 90vw);
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    box-shadow: 0 16px 48px rgba(0,0,0,0.6);
+    overflow: hidden;
+    animation: launcher-in 0.15s ease;
+}
+
+#sftp-input-title {
+    padding: 14px 18px 12px;
+    font-size: 14px; font-weight: 600;
+    color: var(--text-bright);
+    border-bottom: 1px solid var(--border);
+    background: var(--bg);
+}
+
+#sftp-input-field {
+    display: block;
+    width: 100%;
+    box-sizing: border-box;
+    margin: 16px 0 8px;
+    padding: 7px 18px;
+    background: transparent;
+    border: none;
+    border-bottom: 1px solid var(--border);
+    color: var(--text-bright);
+    font-size: var(--settings-font-size, 13px);
+    font-family: var(--font-mono);
+    outline: none;
+}
+#sftp-input-field:focus { border-bottom-color: var(--accent); }
+
+#sftp-input-actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 12px 18px;
+    border-top: 1px solid var(--border);
+}
+
+/* ── Font-Preview-Dropdown ─────────────────────────────────── */
+.font-select-wrap {
+    position: relative;
+    display: block;
+}
+.font-select-btn {
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 5px 9px;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    color: var(--text-bright);
+    font-size: var(--settings-font-size, 13px);
+    font-family: var(--font-ui);
+    cursor: pointer;
+    text-align: left;
+    transition: border-color 0.15s;
+    box-sizing: border-box;
+}
+.font-select-btn:focus { outline: none; border-color: var(--accent); }
+.font-select-btn .fsb-label { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.font-select-btn .fsb-arrow { flex-shrink: 0; margin-left: 6px; color: var(--text-muted); font-size: 10px; }
+
+.font-select-list {
+    position: absolute;
+    top: calc(100% + 2px);
+    left: 0; right: 0;
+    z-index: 500;
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+    max-height: 260px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+    display: none;
+}
+.font-select-list.open { display: block; }
+
+.font-select-option {
+    padding: 6px 12px;
+    cursor: pointer;
+    font-size: var(--settings-font-size, 13px);
+    color: var(--text-bright);
+    white-space: nowrap;
+    transition: background 0.1s;
+}
+.font-select-option:hover    { background: var(--bg-hover); }
+.font-select-option.selected { background: var(--accent-dim); color: var(--accent); }
+
+/* sftp-fileinfo entfernt */
+
+/* Aktiver Zustand des .Dateien-Buttons */
+#sftp-hidden-btn.active {
+    background: var(--accent-dim);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+/* Drag & Drop Ziel-Hervorhebung */
+.sftp-file-list.sftp-drop-target {
+    outline: 2px dashed var(--accent);
+    outline-offset: -4px;
+    background: var(--accent-dim);
+}
+
+/* ── Verbindungslog (Tab) ──────────────────────────────────── */
+#log-pane {
+    display: none;
+    flex-direction: column;
+    position: relative;
+}
+
+#log-toolbar {
+    position: absolute;
+    top: 8px;
+    right: 12px;
+    z-index: 5;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+#log-toolbar-title {
+    display: none;  /* kein Titel nötig — Tab-Button zeigt es schon */
+}
+
+#log-clear-btn {
+    background: var(--bg-panel);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    color: var(--text-muted);
+    padding: 2px 8px;
+    cursor: pointer;
+    font-size: 11px;
+}
+#log-clear-btn:hover { color: var(--text-bright); border-color: var(--accent); }
+
+#log-entries {
+    flex: 1;
+    overflow-y: auto;
+    padding: 8px 0;
+    font-family: var(--log-font-family, var(--font-mono));
+    font-size: var(--log-font-size, 12px);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.log-entry {
+    padding: 1px 12px;
+    white-space: pre;
+    line-height: 1.5;
+    color: var(--text-bright);
+}
+.log-entry.WARNING { color: var(--text-bright); }
+.log-entry.ERROR   { color: var(--danger); }
+.log-entry.INFO    { color: var(--text); }
+.log-entry.DEBUG   { color: var(--text-muted); }
+
+/* ── Log-Button ─────────────────────────────────────────────── */
+#log-btn {
+    display: flex; align-items: center; justify-content: center;
+    width:  calc(var(--header-btn-size, 14px) + 12px);
+    height: calc(var(--header-btn-size, 14px) + 12px);
+    border-radius: 6px;
+    border: 1px solid var(--border); background: transparent;
+    color: var(--text-muted); cursor: pointer; font-size: var(--header-btn-size, 14px);
+    font-family: var(--font-ui); /* verhindert Emoji-Rendering */
+    flex-shrink: 0; transition: all 0.15s; user-select: none;
+}
+#log-btn:hover  { background: var(--bg-hover); color: var(--text-bright); border-color: var(--accent); }
+#log-btn.active { background: var(--accent-dim); color: var(--accent); border-color: var(--accent); }

@@ -1,0 +1,32 @@
+# Python
+venv/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+*.egg-info/
+dist/
+build/
+
+# Konfiguration (enthält Passwörter und Presets)
+config/config.yml
+
+# SSH-Keys (niemals ins Git!)
+keys/
+
+# Eigene Fonts (Lizenzgründe)
+static/fonts/*.ttf
+static/fonts/*.otf
+!static/fonts/.gitkeep
+
+# Logs
+*.log
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+publish.conf

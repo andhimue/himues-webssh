@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSSH — Login</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+        :root {
+            --bg:          #0d1117;
+            --bg-panel:    #161b22;
+            --border:      #30363d;
+            --text:        #c9d1d9;
+            --text-muted:  #6e7681;
+            --text-bright: #f0f6fc;
+            --accent:      #f0b429;
+            --danger:      #f85149;
+            --font-mono:   'Courier New', monospace;
+            --font-ui:     system-ui, sans-serif;
+        }
+
+        html, body {
+            height: 100%;
+            background: var(--bg);
+            color: var(--text);
+            font-family: var(--font-ui);
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #login-box {
+            width: min(380px, 92vw);
+            background: var(--bg-panel);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 36px 32px 28px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+        }
+
+        .logo {
+            font-family: var(--font-mono);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            line-height: 1.1;
+            gap: 1px;
+            letter-spacing: -0.5px;
+            text-align: center;
+            margin-bottom: 28px;
+        }
+        .logo span { color: var(--accent); }
+        .logo-brand {
+            font-size: 10px;
+            font-weight: 400;
+            color: var(--accent);
+            letter-spacing: 2px;
+            opacity: 0.85;
+        }
+        .logo-name {
+            font-size: 22px;
+            font-weight: 700;
+            color: var(--text-bright);
+        }
+        .logo-name span { color: var(--accent); }
+
+        .field { margin-bottom: 14px; }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-bottom: 5px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .pw-wrap {
+            display: flex;
+            gap: 6px;
+        }
+
+        input[type="password"],
+        input[type="text"] {
+            width: 100%;
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 9px 12px;
+            color: var(--text-bright);
+            font-size: 14px;
+            font-family: var(--font-ui);
+            outline: none;
+            transition: border-color 0.15s;
+        }
+        input:focus { border-color: var(--accent); }
+
+        #pw-toggle {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 6px;
+            padding: 0 10px;
+            cursor: pointer;
+            color: var(--text-muted);
+            font-size: 14px;
+            flex-shrink: 0;
+            transition: all 0.12s;
+        }
+        #pw-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+        #error-msg {
+            background: rgba(248,81,73,0.12);
+            border: 1px solid var(--danger);
+            border-radius: 6px;
+            color: var(--danger);
+            font-size: 13px;
+            padding: 9px 12px;
+            margin-bottom: 14px;
+            display: none;
+        }
+        #error-msg.show { display: block; }
+
+        #rate-msg {
+            background: rgba(210,153,34,0.12);
+            border: 1px solid #d29922;
+            border-radius: 6px;
+            color: #d29922;
+            font-size: 13px;
+            padding: 9px 12px;
+            margin-bottom: 14px;
+            display: none;
+            text-align: center;
+        }
+        #rate-msg.show { display: block; }
+
+        button[type="submit"] {
+            width: 100%;
+            background: var(--accent);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 10px;
+            font-size: 14px;
+            cursor: pointer;
+            margin-top: 6px;
+            transition: opacity 0.15s;
+        }
+        button[type="submit"]:hover    { opacity: 0.85; }
+        button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+<div id="login-box">
+    <div class="logo">
+        <div class="logo-brand">himue's</div>
+        <div class="logo-name">web<span>ssh</span></div>
+    </div>
+
+    <div id="rate-msg"></div>
+    <div id="error-msg">Falsches Passwort</div>
+
+    <form id="login-form" autocomplete="off">
+        <div class="field">
+            <label>Passwort</label>
+            <div class="pw-wrap">
+                <input type="password" id="password" name="password"
+                       autocomplete="current-password" autofocus>
+                <button type="button" id="pw-toggle" tabindex="-1">👁</button>
+            </div>
+        </div>
+        <button type="submit" id="submit-btn">Anmelden</button>
+    </form>
+</div>
+
+<script>
+// Passwort anzeigen/verstecken
+document.getElementById("pw-toggle").addEventListener("click", () => {
+    const inp = document.getElementById("password");
+    inp.type = inp.type === "password" ? "text" : "password";
+});
+
+// Login-Formular
+document.getElementById("login-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const pw      = document.getElementById("password").value;
+    const btn     = document.getElementById("submit-btn");
+    const errMsg  = document.getElementById("error-msg");
+    const rateMsg = document.getElementById("rate-msg");
+
+    errMsg.classList.remove("show");
+    rateMsg.classList.remove("show");
+    btn.disabled = true;
+    btn.textContent = "…";
+
+    try {
+        const resp = await fetch("/auth/login", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: pw }),
+        });
+        const data = await resp.json();
+
+        if (data.ok) {
+            location.href = "/";
+        } else if (resp.status === 429) {
+            rateMsg.textContent = data.error || "Zu viele Versuche — bitte warten.";
+            rateMsg.classList.add("show");
+            // Countdown
+            let remaining = data.retry_after || 60;
+            const tick = setInterval(() => {
+                remaining--;
+                rateMsg.textContent = `Zu viele Versuche — noch ${remaining}s warten.`;
+                if (remaining <= 0) {
+                    clearInterval(tick);
+                    rateMsg.classList.remove("show");
+                    btn.disabled = false;
+                    btn.textContent = "Anmelden";
+                }
+            }, 1000);
+        } else {
+            errMsg.classList.add("show");
+            document.getElementById("password").value = "";
+            document.getElementById("password").focus();
+            btn.disabled = false;
+            btn.textContent = "Anmelden";
+        }
+    } catch(err) {
+        errMsg.textContent = "Verbindungsfehler";
+        errMsg.classList.add("show");
+        btn.disabled = false;
+        btn.textContent = "Anmelden";
+    }
+});
+</script>
+</body>
+</html>

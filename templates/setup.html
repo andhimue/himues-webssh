@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSSH — Ersteinrichtung</title>
+    <style>
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        :root {
+            --bg: #0d1117; --bg-panel: #161b22; --border: #30363d;
+            --text: #c9d1d9; --text-muted: #6e7681; --text-bright: #f0f6fc;
+            --accent: #388bfd; --danger: #f85149; --warn: #d29922;
+        }
+        html, body {
+            height: 100%; background: var(--bg); color: var(--text);
+            font-family: system-ui, sans-serif; font-size: 14px;
+            display: flex; align-items: center; justify-content: center;
+        }
+        #box {
+            width: min(400px, 92vw);
+            background: var(--bg-panel); border: 1px solid var(--border);
+            border-radius: 12px; padding: 36px 32px 28px;
+            box-shadow: 0 16px 48px rgba(0,0,0,0.5);
+        }
+        .logo { font-family: 'Courier New', monospace; font-size: 22px; font-weight: 700; color: var(--text-bright); letter-spacing: -0.5px; text-align: center; margin-bottom: 6px; }
+        .logo span { color: var(--accent); }
+        .subtitle { text-align: center; color: var(--text-muted); font-size: 13px; margin-bottom: 28px; }
+        .field { margin-bottom: 14px; }
+        label { display: block; font-size: 12px; color: var(--text-muted); margin-bottom: 5px; text-transform: uppercase; letter-spacing: 0.05em; }
+        .pw-wrap { display: flex; gap: 6px; }
+        input[type="password"], input[type="text"] {
+            width: 100%; background: var(--bg); border: 1px solid var(--border);
+            border-radius: 6px; padding: 9px 12px; color: var(--text-bright);
+            font-size: 14px; outline: none; transition: border-color 0.15s;
+        }
+        input:focus { border-color: var(--accent); }
+        .eye-btn {
+            background: var(--bg); border: 1px solid var(--border); border-radius: 6px;
+            padding: 0 10px; cursor: pointer; color: var(--text-muted); font-size: 14px;
+            flex-shrink: 0; transition: all 0.12s;
+        }
+        .eye-btn:hover { border-color: var(--accent); color: var(--accent); }
+        #error-msg { background: rgba(248,81,73,0.12); border: 1px solid var(--danger); border-radius: 6px; color: var(--danger); font-size: 13px; padding: 9px 12px; margin-bottom: 14px; display: none; }
+        #error-msg.show { display: block; }
+        .hint { font-size: 12px; color: var(--text-muted); margin-top: 4px; }
+        button[type="submit"] {
+            width: 100%; background: var(--accent); color: white; border: none;
+            border-radius: 6px; padding: 10px; font-size: 14px; cursor: pointer;
+            margin-top: 6px; transition: opacity 0.15s;
+        }
+        button[type="submit"]:hover { opacity: 0.85; }
+        button[type="submit"]:disabled { opacity: 0.5; cursor: not-allowed; }
+    </style>
+</head>
+<body>
+<div id="box">
+    <div class="logo">web<span>ssh</span></div>
+    <div class="subtitle">Ersteinrichtung — Bitte ein Passwort festlegen</div>
+    <div id="error-msg"></div>
+    <form id="setup-form" autocomplete="off">
+        <div class="field">
+            <label>Neues Passwort</label>
+            <div class="pw-wrap">
+                <input type="password" id="password" autocomplete="new-password" autofocus>
+                <button type="button" class="eye-btn" data-target="password">👁</button>
+            </div>
+            <div class="hint">Mindestens 8 Zeichen</div>
+        </div>
+        <div class="field">
+            <label>Passwort wiederholen</label>
+            <div class="pw-wrap">
+                <input type="password" id="confirm" autocomplete="new-password">
+                <button type="button" class="eye-btn" data-target="confirm">👁</button>
+            </div>
+        </div>
+        <button type="submit" id="submit-btn">Passwort speichern und anmelden</button>
+    </form>
+</div>
+<script>
+document.querySelectorAll(".eye-btn").forEach(btn => {
+    btn.addEventListener("click", () => {
+        const inp = document.getElementById(btn.dataset.target);
+        inp.type = inp.type === "password" ? "text" : "password";
+    });
+});
+document.getElementById("setup-form").addEventListener("submit", async e => {
+    e.preventDefault();
+    const pw      = document.getElementById("password").value;
+    const confirm = document.getElementById("confirm").value;
+    const btn     = document.getElementById("submit-btn");
+    const err     = document.getElementById("error-msg");
+    err.classList.remove("show");
+    btn.disabled = true; btn.textContent = "…";
+    try {
+        const resp = await fetch("/auth/setup", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ password: pw, confirm }),
+        });
+        const data = await resp.json();
+        if (data.ok) { location.href = "/"; }
+        else { err.textContent = data.error; err.classList.add("show"); btn.disabled = false; btn.textContent = "Passwort speichern und anmelden"; }
+    } catch(e) { err.textContent = "Verbindungsfehler"; err.classList.add("show"); btn.disabled = false; btn.textContent = "Passwort speichern und anmelden"; }
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,177 @@
+# WebSSH — Konfigurationsdatei
+# Kopieren nach config/config.yml und anpassen.
+# YAML-Kommentare beginnen mit #
+# Zeilen können durch ein vorangestelltes # auskommentiert werden.
+
+
+# ── SSL/TLS ───────────────────────────────────────────────────────────────────
+# Nur nötig wenn WebSSH direkt HTTPS anbieten soll (ohne vorgelagerten Proxy).
+# Für Betrieb hinter nginx/traefik/caddy: ssl deaktiviert lassen.
+
+ssl:
+  enabled: false           # true = HTTPS aktivieren
+  # cert: "/etc/ssl/certs/webssh.crt"   # Pfad zum Zertifikat
+  # key:  "/etc/ssl/private/webssh.key" # Pfad zum privaten Schlüssel
+
+
+# ── Server ────────────────────────────────────────────────────────────────────
+
+# Netzwerk-Interface auf dem der Server lauscht.
+# 0.0.0.0 = alle Interfaces, 127.0.0.1 = nur lokal
+host: "0.0.0.0"
+
+# Port des WebSSH-Servers
+port: 8282
+
+# Log-Level: DEBUG | INFO | WARNING | ERROR
+# WARNING: nur Verbindungs- und Fehlermeldungen (empfohlen für Produktion)
+# DEBUG:   alle Meldungen inkl. aiohttp-Internals (nur für Entwicklung)
+log_level: "WARNING"
+
+
+# ── Authentifizierung ────────────────────────────────────────────────────────
+# Passwort-Hash erzeugen: python3 tools/hash-password.py
+# Leer lassen → kein Passwortschutz (nur für lokalen Betrieb)
+
+auth:
+  enable_login: false            # true = Login aktiviert, false = offen
+  password_hash: ""              # bcrypt-Hash — wird automatisch gesetzt beim ersten Login
+  session_timeout: 86400         # Token-Gültigkeit in Sekunden (86400 = 24h)
+  rate_limit_attempts: 5         # Max. Fehlversuche pro IP
+  rate_limit_window: 60          # Zeitfenster in Sekunden
+
+
+# ── Pfade ─────────────────────────────────────────────────────────────────────
+
+paths:
+  # Verzeichnis mit SSH-Private-Keys.
+  # Im Server-Formular wird nur der Dateiname gespeichert,
+  # dieser Pfad wird beim Verbindungsaufbau automatisch vorangestellt.
+  # Es werden nur Dateien OHNE Dateiendung angezeigt (Private Keys).
+  ssh_keys: "/root/.ssh"
+
+  # Zusätzliche Dateinamen die im Key-Dropdown nicht erscheinen sollen.
+  # authorized_keys, known_hosts und config sind immer ausgeschlossen.
+  # ssh_keys_exclude: "deploy_key, backup_key"
+
+  # Verzeichnis mit Schriftart-Dateien (.ttf, .otf, .woff, .woff2).
+  # Leer lassen → Standard: static/fonts/ im WebSSH-Verzeichnis.
+  # Für Docker-Einsatz empfiehlt sich ein externes Verzeichnis.
+  # fonts: "/opt/webssh/fonts"
+
+
+# ── Schriftarten ──────────────────────────────────────────────────────────────
+
+fonts:
+  # Terminal-Fenster
+  # Verfügbare Fonts werden aus static/fonts/ gelesen.
+  # Bold-Variante: Dateiname mit Suffix -Bold oder _Bold (optional).
+  terminal:
+    family: "DejaVuSansMono"                    # muss mit Dateiname in static/fonts/ übereinstimmen
+    size: 14                                    # Schriftgröße in Pixel
+    file: "fonts/DejaVuSansMono.ttf"            # Pfad relativ zu static/
+    file_bold: "fonts/DejaVuSansMono-Bold.ttf"  # leer lassen wenn kein Bold vorhanden
+
+  # Launcher-Dialog (Server-Auswahl, Kategorien, Suchfeld)
+  ui:
+    size: 13
+
+  # Keyboard-Toolbar (Strg- und F-Key-Buttons)
+  toolbar:
+    size: 11
+
+  # Header-Buttons (⌨ ⇄ ⚙ ⏻ im Titelbereich)
+  header:
+    size: 14
+
+  # Grid-Ansichten (leer = wie Terminal)
+  grid_2x1:
+    # size: 11
+    # family: ""
+
+  grid_1x2:
+    # size: 11
+
+  grid_2x2:
+    # size: 10
+
+  # SFTP-Dateimanager
+  sftp:
+    size: 12
+
+
+# ── Terminal-Verhalten ────────────────────────────────────────────────────────
+
+terminal:
+  # Tab automatisch schließen wenn die SSH-Session endet (z.B. durch exit)
+  close_on_disconnect: false
+
+  # Sekunden Verzögerung vor dem automatischen Schließen (0 = sofort)
+  # Wird nur ausgewertet wenn close_on_disconnect: true
+  close_delay: 3
+
+  # Aktive Sessions im Launcher-Dialog anzeigen
+  # false = Abschnitt "Aktive Sessions" ausblenden
+  show_active_sessions: true
+
+
+# ── Session-Persistenz ────────────────────────────────────────────────────────
+
+sessions:
+  # SSH-Sessions über Browser-Reload hinaus am Leben erhalten
+  persist: true
+
+  # session_mode steuert Sichtbarkeit von Sessions:
+  #   single_user — alle Sessions global sichtbar (für einen Benutzer,
+  #                 z.B. nahtloser Wechsel zwischen zwei Rechnern)
+  #   multi_user  — jeder Browser sieht nur seine eigenen Sessions
+  #                 (anhand der client_id im localStorage)
+  session_mode: "single_user"
+
+  # Sekunden bis eine verwaiste Session (kein WebSocket) automatisch beendet wird
+  # 86400 = 24 Stunden
+  reconnect_timeout: 86400
+
+  # Maximale Größe des Scrollback-Buffers pro Session in Bytes
+  # Wird beim Reconnect an den Browser geschickt
+  # 524288 = 512 KB
+  buffer_size: 524288
+
+
+# ── Server-Presets ────────────────────────────────────────────────────────────
+# Jeder Eintrag erscheint als Karte im Launcher-Dialog.
+# Pflichtfelder: title, host, username + (private_key oder password)
+# Optionale Felder: category, port, font
+
+presets:
+
+  - title: "nginx"
+    category: "Produktion"        # Gruppierung im Launcher (optional)
+    host: "192.168.1.46"
+    port: 22                      # Standard: 22
+    username: "root"
+    private_key: "id_ansible"     # Nur Dateiname — paths.ssh_keys wird vorangestellt
+
+  - title: "dns2"
+    category: "Produktion"
+    host: "85.215.135.101"
+    port: 722                     # Abweichender SSH-Port
+    username: "root"
+    private_key: "id_ansible"
+
+  - title: "pvetest"
+    category: "Test"
+    host: "192.168.1.248"
+    port: 22
+    username: "root"
+    private_key: "id_ansible"
+    # font:                       # Optionale Font-Überschreibung für diesen Server
+    #   size: 12                  # Überschreibt fonts.terminal.size
+    #   family: "Courier New"     # Überschreibt fonts.terminal.family
+
+  - title: "Beispiel mit Passwort"
+    # category: "Test"            # Ohne category → landet unter "Allgemein"
+    host: "192.168.1.2"
+    port: 22
+    username: "root"
+    password: "PASSWORT"          # Alternativ zu private_key

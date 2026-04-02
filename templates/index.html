@@ -1,0 +1,666 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <link rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSSH</title>
+
+    <link  rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.3.0/css/xterm.css">
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.3.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-fit@0.8.0/lib/xterm-addon-fit.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xterm-addon-web-links@0.9.0/lib/xterm-addon-web-links.js"></script>
+    <link rel="stylesheet" href="/static/webssh.css">
+</head>
+<body>
+<div id="app">
+    <header id="header">
+        <div class="logo">
+            <div class="logo-brand">himue's</div>
+            <div class="logo-name">web<span>ssh</span> <span class="version-badge" id="version-badge"></span></div>
+        </div>
+        <button id="launcher-btn" title="Verbindungen (Leertaste)" data-i18n-title="launcher.btn_title">+</button>
+        <button id="kb-toggle-btn" title="Tastatur-Toolbar">⌨</button>
+        <button id="sftp-btn" title="Dateimanager">⇄</button>
+        <button id="split-btn" title="Split-View">⊞</button>
+        <button id="log-btn" title="Verbindungslog">☰</button>
+        <div class="header-sep"></div>
+        <button id="settings-btn" title="Einstellungen">⚙</button>
+        <button id="logout-btn" title="Abmelden">⏻</button>
+        <div id="tab-bar"></div>
+    </header>
+    <div id="kb-toolbar">
+        <span class="kb-label">STRG:</span>
+        <button class="kb-btn" data-ctrl="w" title="Strg+W">W</button>
+        <button class="kb-btn" data-ctrl="t" title="Strg+T">T</button>
+        <button class="kb-btn" data-ctrl="o" title="Strg+O">O</button>
+        <button class="kb-btn" data-ctrl="r" title="Strg+R">R</button>
+        <button class="kb-btn" data-ctrl="l" title="Strg+L">L</button>
+        <button class="kb-btn" data-ctrl="u" title="Strg+U">U</button>
+        <button class="kb-btn" data-ctrl="c" title="Strg+C">C</button>
+        <button class="kb-btn" data-ctrl="z" title="Strg+Z">Z</button>
+        <button class="kb-btn" data-ctrl="d" title="Strg+D">D</button>
+        <div class="kb-sep"></div>
+        <div id="kb-fkeys">
+            <button class="kb-btn" data-fkey="F1">F1</button>
+            <button class="kb-btn" data-fkey="F2">F2</button>
+            <button class="kb-btn" data-fkey="F3">F3</button>
+            <button class="kb-btn" data-fkey="F4">F4</button>
+            <button class="kb-btn" data-fkey="F5">F5</button>
+            <button class="kb-btn" data-fkey="F6">F6</button>
+            <button class="kb-btn" data-fkey="F7">F7</button>
+            <button class="kb-btn" data-fkey="F8">F8</button>
+            <button class="kb-btn" data-fkey="F9">F9</button>
+            <button class="kb-btn" data-fkey="F10">F10</button>
+            <button class="kb-btn" data-fkey="F11">F11</button>
+            <button class="kb-btn" data-fkey="F12">F12</button>
+        </div>
+    </div>
+
+    <main id="terminal-area">
+        <div id="welcome">
+            <div class="wl">
+                <div class="wl-brand">himue's</div>
+                <div class="wl-name">web<span>ssh</span></div>
+            </div>
+            <p data-i18n-html="welcome.hint">Drücke <kbd>Leertaste</kbd> oder klicke <kbd>+</kbd> um eine Verbindung zu öffnen</p>
+        </div>
+<div id="sftp-pane" class="terminal-pane sftp-tab-pane">
+        <!-- Aktionsleiste -->
+        <div id="sftp-toolbar">
+            <button class="sftp-action-btn" id="sftp-rename-btn" disabled><span data-i18n="sftp.rename">Umbenennen</span> <span class="sftp-fkey">(F2)</span></button>
+            <button class="sftp-action-btn" id="sftp-copy-btn" title="Markierte Dateien ins andere Panel kopieren" disabled>→ <span data-i18n="sftp.copy">Kopieren</span> <span class="sftp-fkey">(F5)</span></button>
+            <button class="sftp-action-btn" id="sftp-mkdir-btn" disabled>📁 <span data-i18n="sftp.mkdir">Neuer Ordner</span> <span class="sftp-fkey">(F7)</span></button>
+            <button class="sftp-action-btn sftp-danger-btn" id="sftp-delete-btn" disabled>🗑 <span data-i18n="sftp.delete">Löschen</span> <span class="sftp-fkey">(F8/Entf)</span></button>
+            <div class="sftp-toolbar-sep"></div>
+            <button class="sftp-action-btn sftp-upload-btn-style" id="sftp-upload-btn" disabled><span data-i18n="sftp.upload">⬆ Upload</span></button>
+            <button class="sftp-action-btn sftp-download-btn-style" id="sftp-download-btn" title="Markierte Dateien herunterladen" disabled><span data-i18n="sftp.download">⬇ Download</span></button>
+            <input type="file" id="sftp-upload-input" multiple style="display:none">
+            <div class="sftp-toolbar-sep"></div>
+            <button class="sftp-action-btn" id="sftp-search-btn" title="Schnellsuche"><span data-i18n="sftp.search">Suchen</span> <span class="sftp-fkey">(/)</span></button>
+            <button class="sftp-action-btn" id="sftp-hidden-btn" title="Versteckte Dateien ein-/ausblenden">👁 <span data-i18n="sftp.hidden">.Dateien</span></button>
+            <button class="sftp-action-btn" id="sftp-owner-btn" title="Eigentümer/Gruppe ein-/ausblenden">👥 owner</button>
+            <button class="sftp-action-btn" id="sftp-perms-btn" title="Rechte ein-/ausblenden">0644</button>
+            <div id="sftp-status"></div>
+        </div>
+
+        <!-- Zwei Panels -->
+        <div id="sftp-panels">
+            <div class="sftp-panel" id="sftp-left">
+                <div class="sftp-panel-header">
+                    <select class="sftp-server-select" id="sftp-left-server"></select>
+                    <button class="sftp-connect-btn" id="sftp-left-connect"><span data-i18n="sftp.connect">Verbinden</span></button>
+                </div>
+                <div class="sftp-path-bar" id="sftp-left-path"><span class="sftp-bc-seg">/</span></div>
+                <div class="sftp-file-list" id="sftp-left-list">
+                    <div class="sftp-placeholder">Nicht verbunden</div>
+                </div>
+            </div>
+
+            <div id="sftp-divider"></div>
+
+            <div class="sftp-panel" id="sftp-right">
+                <div class="sftp-panel-header">
+                    <select class="sftp-server-select" id="sftp-right-server"></select>
+                    <button class="sftp-connect-btn" id="sftp-right-connect"><span data-i18n="sftp.connect">Verbinden</span></button>
+                </div>
+                <div class="sftp-path-bar" id="sftp-right-path"><span class="sftp-bc-seg">/</span></div>
+                <div class="sftp-file-list" id="sftp-right-list">
+                    <div class="sftp-placeholder">Nicht verbunden</div>
+                </div>
+            </div>
+        </div>
+
+</div>
+
+
+
+<!-- Log-Tab-Pane -->
+<div id="log-pane" class="terminal-pane">
+    <div id="log-toolbar">
+        <span id="log-toolbar-title" data-i18n="log.title">Verbindungslog</span>
+        <button id="log-clear-btn" title="Log leeren"><span data-i18n="log.clear">🗑 Leeren</span></button>
+    </div>
+    <div id="log-entries"></div>
+</div>
+    </main>
+</div>
+
+<div id="launcher-overlay">
+    <div id="launcher-panel">
+        <div id="launcher-search-wrap">
+            <span class="search-icon">⌕</span>
+            <input id="launcher-search" type="text" placeholder="Server suchen…" data-i18n-placeholder="launcher.search" autocomplete="off" spellcheck="false">
+            <span class="search-hint" data-i18n="launcher.esc_hint">ESC zum Schließen</span>
+        </div>
+        <div id="launcher-body">
+            <div id="active-sessions-section" style="display:none">
+                <div class="section-label" data-i18n="launcher.active">Aktive Sessions</div>
+                <div id="active-sessions-list"></div>
+            </div>
+            <div id="launcher-empty">Keine Server gefunden</div>
+        </div>
+    </div>
+</div>
+
+<!-- Takeover-Banner -->
+<div id="takeover-banner">
+    <div id="takeover-inner">
+        <div class="ti-icon">⇄</div>
+        <h2>Sessions übernommen</h2>
+        <p>Deine Sessions wurden von einem anderen Browser übernommen und sind dort aktiv.<br>
+        Um sie zurückzuholen, lade dieses Fenster neu.</p>
+        <button id="takeover-reload" onclick="location.reload()">↺ &nbsp;Fenster neu laden</button>
+    </div>
+</div>
+
+<!-- Tab Kontextmenü -->
+<div id="tab-context-menu">
+<!--
+    <button class="tab-ctx-item" id="ctx-split-v">⬜⬜ Nebeneinander (vertikal)</button>
+    <button class="tab-ctx-item" id="ctx-split-h">Übereinander (horizontal)</button>
+    <div class="tab-ctx-sep"></div>
+-->
+    <button class="tab-ctx-item" id="ctx-close">✕ Tab schließen</button>
+</div>
+
+<!-- Split-Menü -->
+<div id="split-menu">
+    <button class="split-menu-item" data-layout="2x1" title="Vertikal teilen">⬜⬜ Vertikal</button>
+    <button class="split-menu-item" data-layout="1x2" title="Horizontal teilen">Horizontal</button>
+    <button class="split-menu-item" data-layout="2x2" title="4 Panels">⊞ 2×2</button>
+</div>
+
+<!-- SFTP Fortschritts-Popup -->
+<div id="sftp-progress-popup">
+    <div class="sftp-progress-spinner"></div>
+    <div class="sftp-progress-body">
+        <div class="sftp-progress-row">
+            <span id="sftp-progress-file"></span>
+            <span id="sftp-progress-count"></span>
+        </div>
+    </div>
+    <button id="sftp-progress-abort" title="Abbrechen (ESC)">✕</button>
+</div>
+
+<!-- SFTP Konflikt-Dialog -->
+<div id="sftp-conflict-overlay">
+    <div id="sftp-conflict-box">
+        <div id="sftp-conflict-title">⚠ Datei existiert bereits</div>
+        <div id="sftp-conflict-msg"></div>
+        <div id="sftp-conflict-actions">
+            <div class="sca-row">
+                <button class="sca-btn sca-overwrite" data-action="overwrite">Überschreiben</button>
+                <button class="sca-btn sca-skip" data-action="skip">Überspringen</button>
+            </div>
+            <div class="sca-row">
+                <button class="sca-btn sca-all sca-overwrite-all" data-action="overwrite_all">Alle überschreiben</button>
+                <button class="sca-btn sca-all sca-skip-all" data-action="skip_all">Alle überspringen</button>
+            </div>
+            <div class="sca-row sca-row-abort">
+                <button class="sca-btn sca-abort" data-action="abort"><span data-i18n="confirm.cancel">Abbrechen</span></button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Bestätigungs-Dialog -->
+<div id="confirm-overlay">
+    <div id="confirm-box">
+        <div id="confirm-title"></div>
+        <div id="confirm-message"></div>
+        <div id="confirm-actions">
+            <button id="confirm-cancel" class="s-btn-secondary"><span data-i18n="confirm.cancel">Abbrechen</span></button>
+            <button id="confirm-ok" class="s-btn-danger">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- SFTP Eingabe-Dialog (ersetzt prompt()) -->
+<div id="sftp-input-overlay">
+    <div id="sftp-input-box">
+        <div id="sftp-input-title"></div>
+        <input type="text" id="sftp-input-field" autocomplete="off" spellcheck="false">
+        <div id="sftp-input-actions">
+            <button id="sftp-input-cancel" class="s-btn-secondary"><span data-i18n="confirm.cancel">Abbrechen</span></button>
+            <button id="sftp-input-ok" class="s-btn-primary">OK</button>
+        </div>
+    </div>
+</div>
+
+<!-- SFTP Datei-Vorschau Modal -->
+<div id="sftp-preview-overlay">
+    <div id="sftp-preview-box">
+        <div id="sftp-preview-header">
+            <span id="sftp-preview-title"></span>
+            <span id="sftp-preview-meta"></span>
+            <button id="sftp-preview-close" title="Schließen">✕</button>
+        </div>
+        <pre id="sftp-preview-content"></pre>
+        <div id="sftp-preview-footer"></div>
+    </div>
+</div>
+
+<!-- SFTP Dateimanager Modal -->
+
+<!-- Settings Modal -->
+<div id="settings-overlay">
+    <div id="settings-panel">
+
+        <div id="settings-header">
+            <span id="settings-title">⚙ <span data-i18n="settings.title">Einstellungen</span></span>
+            <button id="settings-close" title="Schließen">✕</button>
+        </div>
+
+        <div id="settings-tabs">
+            <button class="stab active" data-tab="servers"><span data-i18n="settings.tab_servers">Server</span></button>
+            <button class="stab" data-tab="fonts">Fonts</button>
+            <button class="stab" data-tab="terminal"><span data-i18n="settings.tab_terminal">Terminal</span></button>
+            <button class="stab" data-tab="sessions">Sessions</button>
+            <button class="stab" data-tab="paths"><span data-i18n="settings.tab_paths">Pfade</span></button>
+            <button class="stab" id="stab-password" data-tab="password"><span data-i18n="settings.tab_password">Passwort</span></button>
+            <button class="stab" id="stab-language" data-tab="language"><span data-i18n="settings.tab_language">Sprache</span></button>
+        </div>
+
+        <div id="settings-body">
+
+            <!-- ── TAB: SERVER ── -->
+            <div class="stab-content active" id="tab-servers">
+                <div id="preset-list-header">
+                    <span class="stab-section-title" data-i18n="settings.section_presets">Server-Presets</span>
+                    <div style="display:flex;gap:6px;align-items:center">
+                        <button class="s-btn-secondary" id="preset-import-btn" title="Presets aus Datei importieren"><span data-i18n="settings.import">⬆ Import</span></button>
+                        <button class="s-btn-secondary" id="preset-export-btn" title="Presets als Datei exportieren"><span data-i18n="settings.export">⬇ Export</span></button>
+                        <button class="s-btn-primary" id="preset-add-btn"><span data-i18n="settings.new_server">+ Neu</span></button>
+                    </div>
+                </div>
+                <div id="preset-list"></div>
+
+                <!-- Export/Import Passwort-Dialog -->
+                <div id="preset-export-dialog" class="hidden">
+                    <div class="pf-header"><span>Presets exportieren</span></div>
+                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">
+                        Passwörter in Presets werden verschlüsselt. Merke dir das Passwort — ohne es können die Presets nicht importiert werden.
+                    </p>
+                    <div class="form-grid">
+                        <label data-i18n="preset.password">Passwort</label>
+                        <input type="password" id="preset-export-pw" placeholder="Export-Passwort" autocomplete="new-password">
+                        <label data-i18n="preset.password_repeat">Wiederholen</label>
+                        <input type="password" id="preset-export-pw2" placeholder="Passwort wiederholen" autocomplete="new-password">
+                    </div>
+                    <div class="pf-actions">
+                        <button class="s-btn-secondary" id="preset-export-cancel"><span data-i18n="confirm.cancel">Abbrechen</span></button>
+                        <button class="s-btn-primary" id="preset-export-ok"><span data-i18n="settings.export_ok">Exportieren</span></button>
+                    </div>
+                </div>
+
+                <div id="preset-import-dialog" class="hidden">
+                    <div class="pf-header"><span>Presets importieren</span></div>
+                    <p style="font-size:12px;color:var(--text-muted);margin:0 0 10px">
+                        Importierte Presets werden den vorhandenen hinzugefügt.
+                    </p>
+                    <div class="form-grid">
+                        <label data-i18n="settings.file">Datei</label>
+                        <input type="file" id="preset-import-file" accept=".json">
+                        <label data-i18n="preset.password">Passwort</label>
+                        <input type="password" id="preset-import-pw" placeholder="Export-Passwort" autocomplete="current-password">
+                    </div>
+                    <div class="pf-actions">
+                        <button class="s-btn-secondary" id="preset-import-cancel"><span data-i18n="confirm.cancel">Abbrechen</span></button>
+                        <button class="s-btn-primary" id="preset-import-ok"><span data-i18n="settings.import_ok">Importieren</span></button>
+                    </div>
+                </div>
+
+                <!-- Formular zum Bearbeiten/Anlegen (modal) -->
+                <div id="preset-form-overlay" class="hidden">
+                <div id="preset-form" autocomplete="off">
+                    <div class="pf-header">
+                        <span id="pf-title">Server bearbeiten</span>
+                    </div>
+
+                    <div class="form-grid">
+                        <label data-i18n="preset.name">Name</label>
+                        <input type="text" id="pf-title-input" placeholder="Mein Server">
+
+                        <label data-i18n="preset.category">Kategorie</label>
+                        <input type="text" id="pf-category" placeholder="Produktion" list="category-list" autocomplete="off">
+                        <datalist id="category-list"></datalist>
+
+                        <label data-i18n="preset.host">Host</label>
+                        <input type="text" id="pf-host" placeholder="192.168.1.1">
+
+                        <label data-i18n="preset.port">Port</label>
+                        <input type="number" id="pf-port" value="22" min="1" max="65535">
+
+                        <label data-i18n="preset.username">Username</label>
+                        <input type="text" id="pf-username" placeholder="root" autocomplete="off">
+
+                        <label data-i18n="preset.auth">Authentifizierung</label>
+                        <div class="radio-group">
+                            <label><input type="radio" name="pf-auth" value="key" checked> <span data-i18n="preset.key_auth">Private Key</span></label>
+                            <label><input type="radio" name="pf-auth" value="password"> <span data-i18n="preset.password_auth">Passwort</span></label>
+                        </div>
+
+                        <label id="pf-key-label" data-i18n="preset.ssh_key">SSH-Key</label>
+                        <select id="pf-private-key">
+                            <option value="">– Key wählen –</option>
+                        </select>
+
+                        <label id="pf-pw-label" class="hidden">Passwort</label>
+                        <div id="pf-pw-wrap" class="hidden inline-row">
+                            <input type="password" id="pf-password" placeholder="Passwort" autocomplete="new-password" style="flex:1">
+                            <button type="button" id="pf-pw-toggle" title="Passwort anzeigen"
+                                    style="background:transparent;border:1px solid var(--border);border-radius:5px;padding:4px 8px;cursor:pointer;color:var(--text-muted);font-size:13px;flex-shrink:0"
+                                    onmousedown="event.preventDefault()"
+                                    >👁</button>
+                        </div>
+
+                        <label data-i18n="preset.font_size">Schriftgröße (Terminal)</label>
+                        <div class="inline-row">
+                            <input type="number" id="pf-font-size" placeholder="Standard" min="6" max="32" style="width:80px">
+                            <span class="field-hint" data-i18n="settings.empty_default">leer = Standard</span>
+                        </div>
+                        <label data-i18n="preset.font_family">Schriftart (Terminal)</label>
+                        <select id="pf-font-family">
+                            <option value="" data-i18n="settings.standard">Standard</option>
+                        </select>
+                        <label data-i18n="preset.grid_2x1_size">Grid 2×1 Größe</label>
+                        <div class="inline-row">
+                            <input type="number" id="pf-grid-2x1-size" placeholder="Standard" min="6" max="32" style="width:80px">
+                            <span class="field-hint" data-i18n="settings.empty_default">leer = Standard</span>
+                        </div>
+                        <label data-i18n="preset.grid_2x1_family">Grid 2×1 Schriftart</label>
+                        <select id="pf-grid-2x1-family">
+                            <option value="" data-i18n="settings.standard">Standard</option>
+                        </select>
+                        <label data-i18n="preset.grid_1x2_size">Grid 1×2 Größe</label>
+                        <div class="inline-row">
+                            <input type="number" id="pf-grid-1x2-size" placeholder="Standard" min="6" max="32" style="width:80px">
+                            <span class="field-hint" data-i18n="settings.empty_default">leer = Standard</span>
+                        </div>
+                        <label data-i18n="preset.grid_1x2_family">Grid 1×2 Schriftart</label>
+                        <select id="pf-grid-1x2-family">
+                            <option value="" data-i18n="settings.standard">Standard</option>
+                        </select>
+                        <label data-i18n="preset.grid_2x2_size">Grid 2×2 Größe</label>
+                        <div class="inline-row">
+                            <input type="number" id="pf-grid-2x2-size" placeholder="Standard" min="6" max="32" style="width:80px">
+                            <span class="field-hint" data-i18n="settings.empty_default">leer = Standard</span>
+                        </div>
+                        <label data-i18n="preset.grid_2x2_family">Grid 2×2 Schriftart</label>
+                        <select id="pf-grid-2x2-family">
+                            <option value="" data-i18n="settings.standard">Standard</option>
+                        </select>
+                    </div>
+
+                    <div class="pf-actions">
+                        <button class="s-btn-danger" id="pf-delete-bottom">Löschen</button>
+                        <div class="pf-actions-right">
+                            <button class="s-btn-secondary" id="pf-cancel"><span data-i18n="settings.cancel">Abbrechen</span></button>
+                            <button class="s-btn-primary" id="pf-save"><span data-i18n="settings.save">Speichern</span></button>
+                        </div>
+                    </div>
+                </div>
+                </div><!-- /preset-form-overlay -->
+            </div>
+
+            <!-- ── TAB: FONTS ── -->
+            <div class="stab-content" id="tab-fonts">
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.tab_terminal">Terminal</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_family">Schriftart</label>
+                        <select id="s-term-font" title="Schriftart wählen">
+                            <option value="">– wird geladen –</option>
+                        </select>
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-term-size" data-path="fonts.terminal.size" min="6" max="32">
+                    </div>
+                    <p class="settings-hint">Schriftarten aus dem konfigurierten Verzeichnis (Standard: <code>static/fonts/</code>). Den Pfad unter "Pfade" konfigurieren.</p>
+                <div class="settings-section" style="margin-top:16px">
+                    <div class="stab-section-title" data-i18n="settings.section_header">Header-Buttons</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-header-size" data-path="fonts.header.size" min="8" max="24">
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_grid_v">Grid — Vertikal (2×1)</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-grid-2x1-size" data-path="fonts.grid_2x1.size" min="6" max="32" placeholder="wie Terminal">
+                        <label data-i18n="settings.font_family">Schriftart</label>
+                        <select id="s-grid-2x1-font" data-path="fonts.grid_2x1.family">
+                            <option value="" data-i18n="settings.like_terminal">wie Terminal</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_grid_h">Grid — Horizontal (1×2)</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-grid-1x2-size" data-path="fonts.grid_1x2.size" min="6" max="32" placeholder="wie Terminal">
+                        <label data-i18n="settings.font_family">Schriftart</label>
+                        <select id="s-grid-1x2-font" data-path="fonts.grid_1x2.family">
+                            <option value="" data-i18n="settings.like_terminal">wie Terminal</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_grid_22">Grid — 2×2</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-grid-2x2-size" data-path="fonts.grid_2x2.size" min="6" max="32" placeholder="wie Terminal">
+                        <label data-i18n="settings.font_family">Schriftart</label>
+                        <select id="s-grid-2x2-font" data-path="fonts.grid_2x2.family">
+                            <option value="" data-i18n="settings.like_terminal">wie Terminal</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_sftp">SFTP-Dateimanager</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-sftp-size" data-path="fonts.sftp.size" min="8" max="18">
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_preview">Datei-Vorschau</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-preview-size" data-path="fonts.preview.size" min="8" max="24">
+                        <label data-i18n="settings.font_family">Schriftart</label>
+                        <select id="s-preview-family" data-path="fonts.preview.family">
+                            <option value="" data-i18n="settings.like_terminal">wie Terminal</option>
+                        </select>
+                    </div>
+                </div>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_ui">UI (Launcher-Dialog)</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-ui-size" data-path="fonts.ui.size" min="8" max="24">
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_keyboard">Keyboard-Toolbar</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-tb-size" data-path="fonts.toolbar.size" min="8" max="32">
+                    </div>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_dialog">Einstellungs-Dialog</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-settings-size" data-path="fonts.settings.size" min="9" max="20">
+                    </div>
+                    <p class="settings-hint">Wird beim nächsten Öffnen des Einstellungs-Dialogs wirksam.</p>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="log.title">Verbindungslog</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.font_size">Schriftgröße</label>
+                        <input type="number" id="s-log-size" data-path="fonts.log.size" min="8" max="20">
+                        <label data-i18n="settings.font_family">Schriftart</label>
+                        <select id="s-log-family" data-path="fonts.log.family">
+                            <option value="" data-i18n="settings.like_terminal">wie Terminal</option>
+                        </select>
+                    </div>
+                </div>
+                <p class="settings-hint">Schriftart-Änderungen werden beim nächsten Verbindungsaufbau wirksam.</p>
+            </div>
+
+            <!-- ── TAB: TERMINAL ── -->
+            <div class="stab-content" id="tab-terminal">
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_auth">Zugriffsschutz</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.login_enabled">Login aktiviert</label>
+                        <input type="checkbox" id="s-enable-login" data-path="auth.enable_login" class="s-checkbox">
+                    </div>
+                    <div class="form-grid" style="margin-top:8px">
+                        <label data-i18n="settings.log_level">Log-Level</label>
+                        <select id="s-log-level" data-path="log_level">
+                            <option value="DEBUG">DEBUG</option>
+                            <option value="INFO">INFO</option>
+                            <option value="WARNING">WARNING</option>
+                            <option value="ERROR">ERROR</option>
+                        </select>
+                    </div>
+                    <p class="settings-hint">Änderung wird beim nächsten Seitenaufruf wirksam. Bei erstmaliger Aktivierung ohne gesetzten Hash erscheint die Einrichtungsseite.</p>
+                </div>
+                <div class="settings-section">
+                    <div class="form-grid">
+                        <label data-i18n="settings.close_on_disconnect">Tab bei Disconnect schließen</label>
+                        <input type="checkbox" id="s-close-on-disc" data-path="terminal.close_on_disconnect" class="s-checkbox">
+                        <label data-i18n="settings.close_delay">Verzögerung (Sekunden)</label>
+                        <input type="number" id="s-close-delay" data-path="terminal.close_delay" min="0" max="60">
+                        <label data-i18n="settings.show_active">Aktive Sessions im Launcher</label>
+                        <input type="checkbox" id="s-show-sessions" data-path="terminal.show_active_sessions" class="s-checkbox">
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── TAB: SESSIONS ── -->
+            <div class="stab-content" id="tab-sessions">
+                <div class="settings-section">
+                    <div class="form-grid">
+                        <label data-i18n="settings.persist">Sessions persistent halten</label>
+                        <input type="checkbox" id="s-persist" data-path="sessions.persist" class="s-checkbox">
+                        <label data-i18n="settings.session_mode">Session-Modus</label>
+                        <select id="s-session-mode" data-path="sessions.session_mode">
+                            <option value="single_user">single_user — global (ein Benutzer)</option>
+                            <option value="multi_user">multi_user — pro Browser getrennt</option>
+                        </select>
+                        <label data-i18n="settings.reconnect_timeout">Reconnect-Timeout (Sekunden)</label>
+                        <input type="number" id="s-reconnect-timeout" data-path="sessions.reconnect_timeout" min="60">
+                        <label data-i18n="settings.buffer_size">Scrollback-Buffer (Bytes)</label>
+                        <input type="number" id="s-buffer-size" data-path="sessions.buffer_size" min="65536">
+                    </div>
+                </div>
+                <p class="settings-hint">Änderungen am Session-Modus und Timeout gelten für neue Sessions.</p>
+            </div>
+
+            <!-- ── TAB: PFADE ── -->
+            <div class="stab-content" id="tab-paths">
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_keys">SSH-Keys</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.keys_dir">Key-Verzeichnis</label>
+                        <div class="inline-row">
+                            <input type="text" id="s-ssh-keys-path" data-path="paths.ssh_keys"
+                                   placeholder="/root/.ssh">
+                            <button class="s-btn-secondary" id="s-keys-reload" style="white-space:nowrap">↺ Neu laden</button>
+                        </div>
+                    </div>
+                    <div class="form-grid" style="margin-top:8px">
+                        <label data-i18n="settings.keys_exclude">Ausschlussliste</label>
+                        <input type="text" id="s-ssh-keys-exclude" data-path="paths.ssh_keys_exclude"
+                               placeholder="datei1, datei2">
+                    </div>
+                    <p class="settings-hint">Nur Dateien ohne Dateiendung werden angezeigt. Fest ausgeschlossen: <code>authorized_keys</code>, <code>known_hosts</code>, <code>config</code>. Weitere Dateinamen kommagetrennt eintragen.</p>
+                </div>
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_fonts_dir">Schriftarten</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.fonts_dir">Fonts-Verzeichnis</label>
+                        <div class="inline-row">
+                            <input type="text" id="s-fonts-path" data-path="paths.fonts"
+                                   placeholder="leer = static/fonts/">
+                            <button class="s-btn-secondary" id="s-fonts-reload" style="white-space:nowrap">↺ Neu laden</button>
+                        </div>
+                    </div>
+                    <p class="settings-hint">Schriftarten (.ttf, .otf, .woff, .woff2) aus diesem Verzeichnis. Für Docker empfiehlt sich ein externes Verzeichnis als Volume. Nach Pfad-Änderung "Neu laden" klicken.</p>
+                </div>
+            </div>
+
+            <!-- ── TAB: PASSWORT ── -->
+            <div class="stab-content" id="tab-password">
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_password">Passwort ändern</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.current_password">Aktuelles Passwort</label>
+                        <div class="inline-row">
+                            <input type="password" id="cp-current" autocomplete="current-password" style="flex:1">
+                            <button type="button" class="s-btn-secondary" style="flex-shrink:0"
+                                onclick="togglePwField('cp-current',this)">👁</button>
+                        </div>
+                        <label data-i18n="settings.new_password">Neues Passwort</label>
+                        <div class="inline-row">
+                            <input type="password" id="cp-new" autocomplete="new-password" style="flex:1">
+                            <button type="button" class="s-btn-secondary" style="flex-shrink:0"
+                                onclick="togglePwField('cp-new',this)">👁</button>
+                        </div>
+                        <label data-i18n="preset.password_repeat">Wiederholen</label>
+                        <div class="inline-row">
+                            <input type="password" id="cp-confirm" autocomplete="new-password" style="flex:1">
+                            <button type="button" class="s-btn-secondary" style="flex-shrink:0"
+                                onclick="togglePwField('cp-confirm',this)">👁</button>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px; display:flex; align-items:center; gap:12px">
+                        <button class="s-btn-primary" id="cp-save">Passwort ändern</button>
+                        <span id="cp-msg" style="font-size:13px"></span>
+                    </div>
+                    <p class="settings-hint" style="margin-top:10px">Mindestens 8 Zeichen. Nach der Änderung bleiben alle aktiven Sessions eingeloggt.</p>
+                </div>
+            </div>
+
+            <!-- ── TAB: SPRACHE ── -->
+            <div class="stab-content" id="tab-language">
+                <div class="settings-section">
+                    <div class="stab-section-title" data-i18n="settings.section_language">Sprache / Language</div>
+                    <div class="form-grid">
+                        <label data-i18n="settings.language_label">Sprache</label>
+                        <select id="lang-select">
+                            <option value="de">Deutsch</option>
+                            <option value="en">English</option>
+                        </select>
+                    </div>
+                    <p class="settings-hint">Ändert die Sprache der Benutzeroberfläche sofort.<br>
+                    Changes the UI language immediately.</p>
+                </div>
+            </div>
+
+        </div><!-- /settings-body -->
+    </div><!-- /settings-panel -->
+</div><!-- /settings-overlay -->
+
+
+
+    <!-- WebSSH JavaScript — defer: wird nach HTML-Parsing ausgeführt, in Reihenfolge -->
+    <script defer src="/static/js/i18n.js"></script>
+    <script defer src="/static/js/config.js"></script>
+    <script defer src="/static/js/launcher.js"></script>
+    <script defer src="/static/js/sessions.js"></script>
+    <script defer src="/static/js/keyboard.js"></script>
+    <script defer src="/static/js/grid.js"></script>
+    <script defer src="/static/js/sftp.js"></script>
+    <script defer src="/static/js/settings.js"></script>
+    <script defer src="/static/js/ui.js"></script>
+    <script defer src="/static/js/log.js"></script>
+    <script defer src="/static/js/main.js"></script>
+</body>
+</html>
