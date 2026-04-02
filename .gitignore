@@ -30,3 +30,7 @@ Thumbs.db
 .vscode/
 .idea/
 publish.conf
+
+# Internes
+GIT-INSTALL.md
+GITEA-Setup.md
