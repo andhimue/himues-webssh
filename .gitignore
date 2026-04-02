@@ -30,6 +30,7 @@ Thumbs.db
 .vscode/
 .idea/
 publish.conf
+publish.sh
 
 # Internes
 GIT-INSTALL.md
