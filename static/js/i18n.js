@@ -31,11 +31,17 @@ function t(key, vars = {}) {
 }
 
 /** Gibt die aktuelle Sprache zurück. */
+/** Gibt die aktuell eingestellte Sprache zurück ("de" oder "en"). */
 function getLang() {
     return localStorage.getItem("webssh_lang") || DEFAULT_LANG;
 }
 
 /** Lädt eine Sprache und wendet sie an. */
+/**
+ * Lädt eine Sprachdatei und wendet die Übersetzungen an.
+ * Speichert die Wahl in localStorage.
+ * @param {string} lang - Sprachcode ("de" | "en")
+ */
 async function setLang(lang) {
     if (!SUPPORTED_LANGS.includes(lang)) lang = DEFAULT_LANG;
     try {

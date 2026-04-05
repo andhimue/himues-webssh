@@ -67,6 +67,10 @@ function selectionHasDir(panel) {
 let _quickFilter = { left: "", right: "" };
 
 /** Wendet Schnellfilter und Hidden-Filter auf die Einträge eines Panels an. */
+/**
+ * Wendet Schnellfilter und Versteckt-Filter auf alle Einträge eines Panels an.
+ * @param {string} side - "left" | "right"
+ */
 function _applyQuickFilter(side) {
     const filter = _quickFilter[side].toLowerCase();
     const listEl = document.getElementById(`sftp-${side}-list`);
@@ -80,6 +84,10 @@ function _applyQuickFilter(side) {
 }
 
 /** Zeigt/versteckt Schnellfilter-Eingabefeld für ein Panel. */
+/**
+ * Öffnet das Schnellfilter-Eingabefeld im aktiven Panel.
+ * @param {string} side - "left" | "right"
+ */
 function _openQuickFilter(side) {
     let el = document.getElementById(`sftp-${side}-filter`);
     if (!el) {
@@ -111,6 +119,10 @@ function _openQuickFilter(side) {
     el.querySelector("input").focus();
 }
 
+/**
+ * Schließt den Schnellfilter und setzt den Filter zurück.
+ * @param {string} side - "left" | "right"
+ */
 function _closeQuickFilter(side) {
     const el = document.getElementById(`sftp-${side}-filter`);
     if (el) el.style.display = "none";
@@ -128,6 +140,11 @@ document.getElementById("sftp-search-btn").addEventListener("click", () => {
 let _showOwner = false;
 let _showPerms = false;
 
+/**
+ * Setzt CSS-Variablen für Spaltenbreiten und Sichtbarkeit von Owner/Perms-Spalten.
+ * Berechnet Pixelwerte aus der aktuellen SFTP-Schriftgröße für konsistente
+ * Ausrichtung zwischen Header und Einträgen.
+ */
 function _applyColumnVisibility() {
     const root = document.documentElement;
     // Spaltenbreiten in px basierend auf der konfigurierten Schriftgröße
@@ -169,6 +186,12 @@ document.getElementById("sftp-hidden-btn").addEventListener("click", () => {
 });
 
 // Clipboard-Fallback für HTTP-Umgebungen (navigator.clipboard nur über HTTPS)
+/**
+ * Kopiert Text in die Zwischenablage. Nutzt execCommand als Fallback
+ * wenn navigator.clipboard nicht verfügbar ist (HTTP ohne HTTPS).
+ * @param {string} text - Zu kopierender Text
+ * @param {Function} onSuccess - Callback bei Erfolg
+ */
 function fallbackCopy(text, onSuccess) {
     const ta = document.createElement("textarea");
     ta.value = text;
@@ -574,12 +597,23 @@ async function sftpLoadDir(side, path) {
 const _panelCursor = { left: -1, right: -1 };
 
 /** Gibt alle navigierbaren Einträge eines Panels zurück (ohne Header, gefiltert). */
+/**
+ * Gibt alle sichtbaren, navigierbaren Einträge eines Panels zurück.
+ * Gefiltert nach display:none (Schnellfilter, versteckte Dateien).
+ * @param {string} side - "left" | "right"
+ * @returns {HTMLElement[]}
+ */
 function _getPanelRows(side) {
     return Array.from(
         document.querySelectorAll(`#sftp-${side}-list .sftp-entry[data-path]`)
     ).filter(r => r.style.display !== "none");
 }
 
+/**
+ * Setzt den visuellen Cursor auf einen bestimmten Index und scrollt ihn sichtbar.
+ * @param {string} side - "left" | "right"
+ * @param {number} idx - Ziel-Index in den sichtbaren Einträgen
+ */
 function _setCursor(side, idx) {
     const rows = _getPanelRows(side);
     rows.forEach((r, i) => r.classList.toggle("sftp-cursor", i === idx));
@@ -588,6 +622,10 @@ function _setCursor(side, idx) {
 }
 
 /** Stellt sicher dass der Cursor nach einem Verzeichniswechsel zurückgesetzt wird. */
+/**
+ * Setzt den Cursor auf den ersten Eintrag zurück (nach Verzeichniswechsel).
+ * @param {string} side - "left" | "right"
+ */
 function _resetCursor(side) { _setCursor(side, 0); }
 
 // Nach jedem Verzeichnis-Load Cursor zurücksetzen
@@ -906,6 +944,7 @@ function showConflictDialog(copyId, filename, index, total) {
 }
 
 /** Schließt den Konflikt-Dialog. */
+/** Versteckt den Kopier-Konflikt-Dialog und löst ggf. ein ausstehende Promise auf. */
 function hideConflictDialog() {
     document.getElementById("sftp-conflict-overlay").classList.remove("open");
 }
@@ -1204,16 +1243,22 @@ function showSftpProgress(file, count = "") {
 }
 
 /** Versteckt das Fortschritts-Popup. */
+/** Versteckt das Fortschritts-Popup und aktiviert den Abbrechen-Button wieder. */
 function hideSftpProgress() {
     document.getElementById("sftp-progress-popup").classList.remove("visible");
     _progressCopyId = null;
 }
 
 /** Setzt die copy_id für den Abbruch-Button/ESC. */
+/**
+ * Setzt die aktuelle Copy-ID für den Abbrech-Mechanismus.
+ * @param {string|null} copyId - Server-seitige Copy-ID oder null
+ */
 function setProgressCopyId(copyId) {
     _progressCopyId = copyId;
 }
 
+/** Sendet einen Abbruch-Request an den Server für den laufenden Kopiervorgang. */
 async function abortCurrentCopy() {
     if (!_progressCopyId) return;
     try {

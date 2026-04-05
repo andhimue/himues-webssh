@@ -606,24 +606,41 @@ class FontSelect {
 // Registry: selectId → FontSelect-Instanz
 const _fontSelects = {};
 
+/** Gibt die FontSelect-Instanz für eine gegebene Element-ID zurück.
+ * @param {string} id - Element-ID des Original-Select
+ * @returns {FontSelect|undefined}
+ */
 function _getFontSelect(id) { return _fontSelects[id]; }
 
+/**
+ * Initialisiert ein FontSelect-Dropdown für ein Select-Element falls noch nicht geschehen.
+ * @param {string} id - Element-ID des zu ersetzenden Select
+ */
 function _initFontSelect(id) {
     const el = document.getElementById(id);
     if (!el || _fontSelects[id]) return;
     _fontSelects[id] = new FontSelect(el);
 }
 
+/**
+ * Erzeugt ein Options-Array für FontSelect aus dem Font-Cache.
+ * @param {Array} fontsCache - Array von Font-Objekten
+ * @param {boolean} withStandard - Ob ein "Standard"-Eintrag vorangestellt wird
+ * @param {string} standardLabel - Bezeichnung des Standard-Eintrags
+ * @returns {Array<{value:string, label:string, font:string|null}>}
+ */
 function _fontSelectOptions(fontsCache, withStandard = true, standardLabel = "Standard") {
     const opts = withStandard ? [{ value: "", label: standardLabel, font: null }] : [];
     fontsCache.forEach(f => opts.push({ value: f.name, label: f.name, font: f.name }));
     return opts;
 }
 
+/** Zeigt das Preset-Formular-Overlay und übersetzt alle Texte. */
 function _showPresetForm()  {
     document.getElementById("preset-form-overlay").classList.remove("hidden");
     if (typeof _applyTranslations === "function") _applyTranslations();
 }
+/** Versteckt das Preset-Formular-Overlay. */
 function _hidePresetForm()  { document.getElementById("preset-form-overlay").classList.add("hidden"); }
 
 document.getElementById("preset-add-btn").addEventListener("click", () => openPresetForm(null));
@@ -850,6 +867,7 @@ async function reloadTerminalConfig() {
 }
 // ── Preset Export / Import ─────────────────────────────────────
 
+/** Zeigt den Export-Dialog für Presets (Passwort-Eingabe). */
 function showPresetExportDialog() {
     _hidePresetForm();
     document.getElementById("preset-import-dialog").classList.add("hidden");
@@ -859,6 +877,7 @@ function showPresetExportDialog() {
     document.getElementById("preset-export-pw").focus();
 }
 
+/** Zeigt den Import-Dialog für Presets (Datei + Passwort). */
 function showPresetImportDialog() {
     _hidePresetForm();
     document.getElementById("preset-export-dialog").classList.add("hidden");
@@ -867,6 +886,7 @@ function showPresetImportDialog() {
     document.getElementById("preset-import-pw").value   = "";
 }
 
+/** Versteckt Export- und Import-Dialog und leert deren Eingabefelder. */
 function hidePresetDialogs() {
     document.getElementById("preset-export-dialog").classList.add("hidden");
     document.getElementById("preset-import-dialog").classList.add("hidden");

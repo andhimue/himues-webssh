@@ -25,6 +25,8 @@ const logBtn     = document.getElementById("log-btn");
 
 // ── Hintergrund-Polling (immer aktiv) ────────────────────────
 
+/** Hintergrund-Polling: ruft /log?since=<ts> ab und speichert neue
+ * Einträge im DOM (wenn Tab aktiv) oder im _logBuffer (wenn Tab geschlossen). */
 async function _bgPoll() {
     try {
         const resp    = await fetch("/log?since=" + _logSince);
@@ -43,6 +45,10 @@ async function _bgPoll() {
     _logPollTimer = setTimeout(_bgPoll, LOG_POLL_MS);
 }
 
+/**
+ * Hängt einen Log-Eintrag ans DOM und begrenzt die Anzahl auf LOG_MAX_ENTRIES.
+ * @param {{ts:number, level:string, msg:string}} e - Log-Eintrag
+ */
 function _appendEntry(e) {
     const atBottom = logEntries.scrollHeight - logEntries.scrollTop
         <= logEntries.clientHeight + 10;
@@ -59,6 +65,7 @@ function _appendEntry(e) {
     if (atBottom) logEntries.scrollTop = logEntries.scrollHeight;
 }
 
+/** Schreibt alle gepufferten Einträge (aus _logBuffer) in den DOM. */
 function _flushBuffer() {
     _logBuffer.forEach(e => _appendEntry(e));
     _logBuffer.length = 0;
@@ -69,6 +76,7 @@ _bgPoll();
 
 // ── Tab anlegen ───────────────────────────────────────────────
 
+/** Legt den Log-Tab in der Tab-Leiste an falls noch nicht vorhanden. */
 function _ensureLogTab() {
     if (_logTabEl) return;
     _logTabEl = document.createElement("div");
@@ -96,11 +104,13 @@ function _ensureLogTab() {
     document.getElementById("tab-bar").appendChild(_logTabEl);
 }
 
+/** Zeigt einen Bestätigungsdialog vor dem Schließen des Log-Tabs. */
 async function _confirmCloseLog() {
-    const ok = await showConfirm("Tab schlie\u00DFen", "Log-Tab schlie\u00DFen?\nDer Puffer l\u00E4uft im Hintergrund weiter.");
+    const ok = await showConfirm(t("log.close_title"), t("log.close_confirm"));
     if (ok) _closeLogTab();
 }
 
+/** Schließt den Log-Tab: deaktiviert ihn und entfernt ihn aus der Tab-Leiste. */
 function _closeLogTab() {
     deactivateLog();
     if (_logTabEl) {
@@ -140,6 +150,7 @@ document.getElementById("tab-bar").addEventListener("contextmenu", e => {
 
 // ── Aktivieren / Deaktivieren ─────────────────────────────────
 
+/** Aktiviert den Log-Tab: zeigt den Pane, startet Polling, markiert Tab aktiv. */
 function activateLog() {
     deactivateAll();
     _ensureLogTab();
@@ -150,6 +161,7 @@ function activateLog() {
     _flushBuffer();  // gepufferte Einträge nachladen
 }
 
+/** Deaktiviert den Log-Tab: versteckt den Pane, stoppt Polling. */
 function deactivateLog() {
     _logActive = false;
     logBtn.classList.remove("active");

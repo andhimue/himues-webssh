@@ -1,4 +1,4 @@
-# WebSSH v1.3
+# WebSSH v1.4
 
 Selbst gehosteter Web-SSH-Client mit persistenten Sessions, SFTP-Dateimanager,
 Split-View Grid und Verbindungslog.

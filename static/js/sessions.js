@@ -222,6 +222,13 @@ async function buildSession(id, title, existingSessionId, preset) {
 // Auto-Reconnect Konfiguration
 const WS_RECONNECT_DELAYS = [1000, 2000, 5000, 10000, 30000]; // ms zwischen Versuchen
 
+/**
+ * Öffnet eine WebSocket-Verbindung für eine SSH-Session.
+ * Verarbeitet eingehende Nachrichten (output, resize, error, close, takeover).
+ * @param {Object} session - Session-Objekt
+ * @param {string|null} existingSessionId - ID einer wiederzuverbindenden Session
+ * @param {Object|null} preset - Preset-Objekt mit Verbindungsdaten
+ */
 function connectWebSocket(session, existingSessionId, preset) {
     const wsProto = location.protocol === "https:" ? "wss:" : "ws:";
 
@@ -535,6 +542,11 @@ async function confirmCloseSession(id) {
     if (ok) closeSession(id);
 }
 
+/**
+ * Beendet eine Session: stoppt Reconnect-Timer, schließt WebSocket,
+ * entfernt Tab und Pane aus dem DOM.
+ * @param {number} id - Session-ID
+ */
 function closeSession(id) {
     const s = getSession(id);
     if (!s) return;

@@ -14,7 +14,7 @@
 
 // ── Versionsnummer ────────────────────────────────────────────
 /** Aktuelle Anwendungsversion. Wird im Header neben "webssh" angezeigt. */
-const VERSION = "1.3";
+const VERSION = "1.4";
 
 // ── UUID-Generierung ──────────────────────────────────────────
 
